@@ -1,5 +1,0 @@
-Get System Time: mov ah,2ch 
-	      int 21h      	Return: CH = hour CL = minute DH = second DL = 1/100 seconds
-Graphical mode Used: mov ax, 4f02h
-		       mov bx, 105h
-		       int 10h 	1024x768 pixels
