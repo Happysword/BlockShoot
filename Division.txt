@@ -1,0 +1,21 @@
+1. Procedure to draw the blocks using their places in memory and having a boolean array to check if they should be drawn or not.
+example in memory would be blockx db 20, 45, 20 ,45 , ...
+			   blocky db 30,30, 60,60, ...
+			   blockdrawn db 1,1,1,1,0, ...
+
+2.Procedure that draws the shooters and moves them up and down according to arrow keys they will be saved using one point and drawn according to it.
+example in memory for the points shooter1x dw 50 shooter1y dw 50 
+
+3.Procedure to fire bullets from each shooter and saved in memory using one point having a limit on bullets shot per a certain time for a max of 5 bullets appearing on screen for every player.it also shifts the bullets every 10/100 of a second using the time interrupt.
+example in memory bulletsP1x dw 100 ,200, ...
+		   bulletsP1y dw 400,620, ...
+
+4.Procedure to check for collision between the bullets and either the shooter or the blocks. if there was a hit the bullet would dissapear and the memory location would be deleted (set to zero). If the hit was on a block the block would disappear by setting the boolean value of it in blockDrawn to zero.
+
+Also there is a timer and a score counter for each player that will be added at the end.
+
+Notes: 
+1-We will use 1024x768 pixels (1024 cloumn , 768 row) leave 168 pixels for the chat module that leaves 600 pixels for the game OR 640x480 or 800x600 we should leave 1/5 of the screen according to document.
+2-We should add two modes for the game(easy and hard)?
+3- should we use github?
+4- comments for understanding , using variables for everything and procedures or macros only, think in  a high level language then translate.
