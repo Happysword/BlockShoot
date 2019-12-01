@@ -2,21 +2,28 @@
 
 ;;;;;;;MACROS;;;;;;;;;;;
 
-
+;Bugs TODO fix bullets bug relted to time int???
 
 .Model Large
 .Stack 64
 .Data
 IntroMessage db 'Press Space To Continue','$'
 TimeRemaining db "Time Remaining : ",'$'
-Bullets1X dw 11 dup(0)
-Bullets1Y dw 11 dup(0)
-Bullets2X dw 11 dup(0)
-Bullets2Y dw 11 dup(0)
+ScoreMessage db "Score : ",'$'
+Bullets1X dw 10 dup(0),1
+Bullets1Y dw 10 dup(0),1
+Bullets2X dw 10 dup(0),1
+Bullets2Y dw 10 dup(0),1
 SHOOTER1X DW 100   ;X COORDINATE FOR OUTLINE STARTING POINT
-SHOOTER1Y DW 249   ;Y COORDINATE FOR OUTLINE STARTING POINT
-SHOOTER2X DW 894  
-SHOOTER2Y DW 249
+SHOOTER1Y DW 250   ;Y COORDINATE FOR OUTLINE STARTING POINT
+SHOOTER2X DW 900  
+SHOOTER2Y DW 200
+
+
+block11Y dw 100,200,300,400,500,600
+block12Y dw 100,200,300,400,500,600
+block11x dw 6 dup(50)
+block12x dw	6 dup(10)
 
 block21Y dw 100,200,300,400,500,600
 block22Y dw 100,200,300,400,500,600
@@ -25,17 +32,24 @@ block22x dw	6 dup(990)
 
 bulletaddtimer db ?
 booleantime db 0
-
-Timervalue db 10
-LastTickedTime db ?
+bulletaddtimer2 db ?
 booleantime2 db 0
+
+Timervalue db 60
+LastTickedTime db ?
+booleantime3 db 0
+
+Player1Score db 0
+Player2Score db 0
 
 frameMes1 db 'Press F1 To Enter Chat Mode',10,13,'$'
 frameMes2 db 'Press F2 To Start A New Game',10,'$'
 frameMes3 db 'Press ESC to Exit The Game',10,'$'
 notbarmess db 128 dup('_'),10,'$' 
+notbarmess2 db 128 dup('-'),10,'$' 
 BulletNumber equ 10
 ScreenWidth equ 1024
+Shooterlength equ 150
 .code
 
 ;---------------------------------------------------------------------------
@@ -499,6 +513,126 @@ CLEARSHOOTER2 proc far				;DRAWS OVER EVERYTHING IN BLACK == CLEARING
 	CALL CLRSHOOTER2TIP
 ret
 CLEARSHOOTER2 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+TimerPrint proc far
+		  
+		mov ax,2c00h   ;checking the time the game started
+		int 21h   
+		cmp booleantime3,0
+		jnz timeaddition
+		mov LastTickedTime,dh
+		mov booleantime3,1
+		
+		timeaddition:    ;check if a second passed and add to the timer
+		cmp LastTickedTime,dh
+		jz PrintingTime
+		mov LastTickedTime,dh
+		dec Timervalue
+		  
+PrintingTime:	 
+		  mov ah,2   ;move cursor
+		  mov dx,2635h
+		  mov bx,0
+		  int 10h
+		  
+		  mov ah,9
+		  lea dx,TimeRemaining
+		  int 21h
+		  
+		  mov al,Timervalue
+		  mov ah,0
+		  mov dl,10
+		  div dl 
+		  mov cl,al 
+		  mov ch,ah ;dividing numbers;
+		  
+		  
+		  mov dl,cl ;printing clock
+		  add dl,'0'
+		  mov ah,2
+		  int 21h
+		  
+		  mov dl,ch ;printing clock
+		  add dl,'0'
+		  mov ah,2
+		  int 21h
+		 
+ret
+TimerPrint endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+StatusBar proc far
+
+	mov ah,2     ;moving the cursor 
+    mov dx,2500h
+	mov bx,0
+    int 10h
+	
+	mov ah,9
+	lea dx,notbarmess ;print the upper bound
+	int 21h
+	
+	mov ah,2   ;move cursor
+	mov dx,2605h
+	mov bx,0
+	int 10h
+	mov ah,9
+	lea dx,ScoreMessage
+	int 21h
+	mov al,Player1Score
+	mov ah,0
+	mov dl,10
+	div dl 
+	mov cl,al 
+	mov ch,ah ;dividing numbers
+	mov dl,cl ;printing scoreplayer1
+	add dl,'0'
+	mov ah,2
+	int 21h
+	mov dl,ch ;printing scoreplayer1
+	add dl,'0'
+	mov ah,2
+	int 21h
+		 
+	mov ah,2   ;move cursor
+	mov dx,2670h
+	mov bx,0
+	int 10h
+	mov ah,9
+	lea dx,ScoreMessage
+	int 21h
+	mov al,Player2Score
+	mov ah,0
+	mov dl,10
+	div dl 
+	mov cl,al 
+	mov ch,ah ;dividing numbers;
+	mov dl,cl ;printing scoreplayer2
+	add dl,'0'
+	mov ah,2
+	int 21h
+	mov dl,ch ;printing scoreplayer2
+	add dl,'0'
+	mov ah,2
+	int 21h
+	
+	call TimerPrint
+	
+	mov ah,2     ;moving the cursor 
+    mov dx,2700h
+	mov bx,0
+    int 10h
+	
+	
+	mov ah,9 ;print the lower bound
+	lea dx,notbarmess2
+	int 21h
+	
+
+ret
+StatusBar endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -743,7 +877,7 @@ GameName endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-AddBullet proc far
+AddBullet1 proc far
 ;Add the Bullet to the memory location to be drawn
 	
 	;timer to add bullets every second
@@ -760,7 +894,7 @@ AddBullet proc far
 		mov bulletaddtimer,dh
 		
 	
-	Mov CX,BulletNumber+1
+	Mov CX,BulletNumber
 	LEA SI,Bullets1X
 	LEA DI,Bullets1Y
 	
@@ -774,23 +908,78 @@ AddBullet proc far
 		JNZ NEXT
 		
 		ADDING: ;ADDING THE BULLET TO MEMORY
-			MOV AX,SHOOTER1X
+			MOV AX,SHOOTER1Y ;inverted x and y
+			ADD AX,54
 			MOV [SI],AX
-			MOV AX,SHOOTER1Y
+			MOV AX,SHOOTER1X ;inverted x and y
+			ADD AX,34
 			MOV [DI],AX
 			jmp addbulletreturn
 			
-		NEXT: DEC CX
-		INC SI
-		INC DI
+		NEXT: 
+		ADD SI,2
+		ADD DI,2
+		DEC CX
 		JNZ AddBulletLoop
 		
 addbulletreturn :ret
-AddBullet endp
+AddBullet1 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-BulletCollision proc far
+
+AddBullet2 proc far
+;Add the Bullet to the memory location to be drawn
+	
+	;timer to add bullets every second
+	mov ax,2c00h 
+	int 21h   
+	cmp booleantime2,0
+	jnz hastimecome2
+	mov bulletaddtimer2,dh
+	mov booleantime2,1
+	
+	hastimecome2:	
+		cmp dh,bulletaddtimer2
+		jz addbulletreturn2
+		mov bulletaddtimer2,dh
+		
+	
+	Mov CX,BulletNumber
+	LEA SI,Bullets2X
+	LEA DI,Bullets2Y
+	
+		  
+	
+	AddBulletLoop2:
+		
+		CMP word ptr [SI],0 ;CHECKING IF THERE IS A BULLET SAVED 
+		JNZ NEXT2
+		CMP word ptr [DI],0
+		JNZ NEXT2
+		
+		ADDING2: ;ADDING THE BULLET TO MEMORY
+			MOV AX,SHOOTER2Y ;inverted x and y
+			ADD AX,54
+			MOV [SI],AX
+			MOV AX,SHOOTER2X ;inverted x and y
+			SUB AX,23
+			MOV [DI],AX
+			jmp addbulletreturn2
+			
+		NEXT2: 
+		ADD SI,2
+		ADD DI,2
+		DEC CX
+		JNZ AddBulletLoop2
+		
+addbulletreturn2 :ret
+AddBullet2 endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+BulletCollision1 proc far
 mov si,offset Bullets1X    ;check if the bullets positions (if not zero) are collided with something  
 mov di,offset Bullets1y
 mov cx,11 
@@ -800,8 +989,15 @@ loopBulletcollision:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THE
                     jz beginnextcollisionchecking 
 					
 					checkBullWithShooterColl:mov bx,SHOOTER2X
-											 cmp word ptr[di],bx
+											 cmp word ptr[di],bx ;x position compare
 					                         jbe checkbullblock1
+											 mov bx,SHOOTER2Y ;y upper position compare 
+											 cmp word ptr[si],bx
+											 jb checkbullblock1
+											 mov bx,SHOOTER2Y ;y lower position compare
+											 add bx,Shooterlength
+											 cmp word ptr[si],bx
+											 jg checkbullblock1
 											 mov word ptr[si],0
 											 mov word ptr[di],0
 											 jmp beginnextcollisionchecking
@@ -848,7 +1044,76 @@ BulletCollisionreturn: ret
 ;THEN CHECK IF IT IS AT THE END
 ;IF THEY COLLIDED RESET THE BULLET 
 
-BulletCollision endp
+BulletCollision1 endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BulletCollision2 proc far
+mov si,offset Bullets2X    ;check if the bullets positions (if not zero) are collided with something  
+mov di,offset Bullets2y
+mov cx,11 
+loopBulletcollision2:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
+                    jz beginnextcollisionchecking2  
+                    cmp word ptr[di],0
+                    jz beginnextcollisionchecking2
+					
+					checkBullWithShooterColl2:mov bx,SHOOTER1X
+											 cmp word ptr[di],bx
+					                         jge checkbullblock12
+											 mov bx,SHOOTER1Y ;y upper position compare 
+											 cmp word ptr[si],bx
+											 jb checkbullblock12
+											 mov bx,SHOOTER1Y ;y lower position compare
+											 add bx,Shooterlength
+											 cmp word ptr[si],bx
+											 jg checkbullblock12
+											 mov word ptr[si],0
+											 mov word ptr[di],0
+											 jmp beginnextcollisionchecking2                      
+			        checkbullblock12:mov bx,block11x								 
+									cmp word ptr[di],bx
+									jge checkbullblock22
+									mov word ptr[si],0
+									mov word ptr[di],0
+									;;delete block 
+									jmp beginnextcollisionchecking2
+											 
+					
+					checkbullblock22:mov bx,block12x								 
+									cmp word ptr[di],bx
+									jge checkbulllimit2
+									mov word ptr[si],0
+									mov word ptr[di],0
+									;;delete block 
+									jmp beginnextcollisionchecking2
+					
+					checkbulllimit2: cmp word ptr [di],0 ;screen limit
+									jge beginnextcollisionchecking2
+									mov word ptr[si],0
+									mov word ptr[di],0
+									
+					
+                beginnextcollisionchecking2:add si,2
+										   add di,2
+										   dec cx  
+										   cmp cx,0
+				                   jnz loopBulletcollision2
+								  
+				
+
+BulletCollisionreturn2: ret
+
+					
+ 
+;IF THEY ARE NOT CHECK IF THEY COLLIDE WITH THE SHOOTER 
+;THEN CHECK IF THEY COLLIDE WITH THE BLOCKS IF THEY ARE AT THE X OF THE FIRST BLOCKS
+;IF IT COLLIDED RESET BULLET AND DELETE BLOCK 
+;THEN CHECK FOR THE NEXT BLOCKS 
+;SAME AS ABOVE 
+;THEN CHECK IF IT IS AT THE END
+;IF THEY COLLIDED RESET THE BULLET 
+
+BulletCollision2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -896,14 +1161,16 @@ notificationBar:mov ah,2     ;moving the cursor to the below the frame messages 
 
 ret
 MainMenu endp
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-drawbullet proc far 
+drawbullet1 proc far 
 
      mov si,offset Bullets1X
      mov di,offset Bullets1Y
 	  
-		  mov cx,11
+		  mov cx,10
      begin:push cx
 	      cmp word ptr [si],0
           jz nexttoDraw
@@ -941,11 +1208,57 @@ drawbullet proc far
 				jnz begin
           
 DrawReturn:   ret   
-drawbullet endp
+drawbullet1 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+drawbullet2 proc far 
+
+     mov si,offset Bullets2X
+     mov di,offset Bullets2Y
+	  
+		  mov cx,11
+     begin2:push cx
+	      cmp word ptr [si],0
+          jz nexttoDraw2
+          cmp word ptr [di],0
+          jz nexttoDraw2
+	       mov cx,[di] 
+           mov dx,[si] 
+           mov ax,[si] 
+           add ax,10 
+            
+           mov bx,[di] 
+           add bx,20 
+           
+     loopoutery2: mov dx,[si]
+	 
+           loopinnerx2:push ax
+                      mov al,9h
+                      mov ah,0ch
+                      int 10h 
+                      pop ax 
+                      inc dx 
+                      cmp dx,ax
+                      jnz loopinnerx2
+                      
+           inc cx
+           cmp cx,bx
+           jnz loopoutery2
+           
+          
+  nexttoDraw2:  add si,2
+                add di,2
+				pop cx
+				dec cx
+				cmp cx,0
+				jnz begin2
+          
+DrawReturn2:   ret   
+drawbullet2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-BulletClear proc far 
+BulletClear1 proc far 
 
      mov si,offset Bullets1X
      mov di,offset Bullets1Y
@@ -985,82 +1298,192 @@ BulletClear proc far
 				pop cx
 				dec cx
 				cmp cx,0
-				jnz beginClearing   
-BulletClear endp
+				jnz beginClearing
+ret				
+BulletClear1 endp
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-BulletAnimation proc far
+BulletClear2 proc far 
+
+     mov si,offset Bullets2X
+     mov di,offset Bullets2Y
+	  
+		  mov cx,11
+     beginClearing2:push cx
+	      cmp word ptr [si],0
+          jz nexttoClear2
+          cmp word ptr [di],0
+          jz nexttoClear2
+	       mov cx,[di] 
+           mov dx,[si] 
+           mov ax,[si] 
+           add ax,10 
+            
+           mov bx,[di] 
+           add bx,20 
+           
+     loopouterClearingy2: mov dx,[si]
+	 
+           loopinnerClearingx2:push ax
+                      mov al,0h
+                      mov ah,0ch
+                      int 10h 
+                      pop ax 
+                      inc dx 
+                      cmp dx,ax
+                      jnz loopinnerClearingx2
+                      
+           inc cx
+           cmp cx,bx
+           jnz loopouterClearingy2
+           
+          
+  nexttoClear2:   add si,2
+                add di,2
+				pop cx
+				dec cx
+				cmp cx,0
+				jnz beginClearing2
+ret				
+BulletClear2 endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BulletAnimation1 proc far
 					mov si,offset Bullets1X
 					mov di,offset Bullets1Y
-					mov cx,11
+					mov cx,10
 loopanimationbullet:cmp word ptr [si],0
                     jz beginnextanimation
 					cmp word ptr [di],0
 					jz beginnextanimation
 					
-					add word ptr [di],50
-					add si,2
-					add di,2
+					add word ptr [di],30
 					
-                beginnextanimation:dec cx
+                beginnextanimation:add si,2
+								   add di,2
+								   dec cx
 								   cmp cx,0
 				                   jnz loopanimationbullet
 								  
 				
 
 Bulletanimatedreturn: ret
-BulletAnimation endp
+BulletAnimation1 endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BulletAnimation2 proc far
+					mov si,offset Bullets2X
+					mov di,offset Bullets2Y
+					mov cx,11
+loopanimationbullet2:cmp word ptr [si],0
+                    jz beginnextanimation2
+					cmp word ptr [di],0
+					jz beginnextanimation2
+					
+					sub word ptr [di],30
+					
+                beginnextanimation2:
+								   add si,2
+								   add di,2
+								   dec cx
+								   cmp cx,0
+				                   jnz loopanimationbullet2
+								  
+				
+
+Bulletanimatedreturn2: ret
+BulletAnimation2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-TimerPrint proc far
-		  
-		mov ax,2c00h   ;checking the time the game started
-		int 21h   
-		cmp booleantime2,0
-		jnz timeaddition
-		mov LastTickedTime,dh
-		mov booleantime2,1
+
+ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
+						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 		
-		timeaddition:    ;check if a second passed and add to the timer
-		cmp LastTickedTime,dh
-		jz PrintingTime
-		mov LastTickedTime,dh
-		dec Timervalue
-		  
-PrintingTime:	 
-		  mov ah,2   ;move cursor
-		  mov dx,2930h
-		  mov bx,0
-		  int 10h
-		  
-		  mov ah,9
-		  lea dx,TimeRemaining
-		  int 21h
-		  
-		  mov al,Timervalue
-		  mov ah,0
-		  mov dl,10
-		  div dl 
-		  mov cl,al 
-		  mov ch,ah ;dividing numbers;
-		  
-		  
-		  mov dl,cl ;printing clock
-		  add dl,'0'
-		  mov ah,2
-		  int 21h
-		  
-		  mov dl,ch ;printing clock
-		  add dl,'0'
-		  mov ah,2
-		  int 21h
-		  
-		  
-		  
-ret
-TimerPrint endp
+				;CHECKING WHETHER USER HAS PRESSED A KEY
+		MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
+		INT 16H
+		jz exitadjust1
+	
+	CMP AH,1EH    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	JE UP_PRESSED
+	
+	CMP AH,2CH    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	JE DOWN_PRESSED
+	
+	JMP exitadjust1  ;KEYS OTHER THAN UP AND DOWN HAVE BEEN PRESSED WHICH MAKES NO EFFECT
+	
+	
+	UP_PRESSED:
+		CMP SHOOTER2Y,50
+		JL exitadjust1
+		SUB SHOOTER2Y,50  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
+		MOV BX,0       
+		mov ah,7    ;clear key from buffer
+		int 21h
+		JMP exitadjust1
+	
+	DOWN_PRESSED:
+						;SINCE DOWN HAS BEEN PRESSED, WILL INCREMENT THE Y COORDINATE 
+		CMP SHOOTER2Y,450
+		JGE exitadjust1
+		ADD SHOOTER2Y,50
+		MOV BX,0
+		mov ah,7    ;clear key from buffer
+		int 21h
+		JMP exitadjust1
+		
+		
+exitadjust1:	RET
+
+ADJUST_POSITION1 ENDP
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
+						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
+		
+				;CHECKING WHETHER USER HAS PRESSED A KEY
+		MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
+		INT 16H
+		jz exitadjust2
+	
+	CMP AH,48H    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	JE UP_PRESSED2
+	
+	CMP AH,50H    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	JE DOWN_PRESSED2
+	
+	JMP exitadjust2  ;KEYS OTHER THAN UP AND DOWN HAVE BEEN PRESSED WHICH MAKES NO EFFECT
+	
+	
+	UP_PRESSED2:
+		CMP SHOOTER1Y,0
+		JLE exitadjust2
+		SUB SHOOTER1Y,50  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
+		MOV BX,0       
+		mov ah,7    ;clear key from buffer
+		int 21h
+		JMP exitadjust2
+	
+	DOWN_PRESSED2:
+						;SINCE DOWN HAS BEEN PRESSED, WILL INCREMENT THE Y COORDINATE 
+		CMP SHOOTER1Y,440
+		JGE exitadjust2
+		ADD SHOOTER1Y,50
+		MOV BX,0
+		mov ah,7    ;clear key from buffer
+		int 21h
+		JMP exitadjust2
+		
+		
+exitadjust2:	RET
+
+ADJUST_POSITION2 ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1112,9 +1535,9 @@ mov Bullets1X+16,0
 mov Bullets1X+18,0
 
 mov SHOOTER1X , 100   
-mov SHOOTER1Y , 249   
-mov SHOOTER2X , 894  
-mov SHOOTER2Y , 249
+mov SHOOTER1Y , 250   
+mov SHOOTER2X , 900  
+mov SHOOTER2Y , 200
 
 mov block22Y   ,100
 mov block22Y+2 ,200
@@ -1145,7 +1568,7 @@ mov block22x+8 ,990
 mov block22x+10,990
 
 mov booleantime,0
-mov Timervalue,10
+mov Timervalue,60
 mov booleantime2,0
 
 ret
@@ -1169,7 +1592,7 @@ Mainmenujump:	CALL MainMenu
 WaitingForKeyPressed:mov ah,0
                      int 16h
                      cmp al,1bh
-                     jz Exitmain
+                     jz tempexitmain
                      cmp ah,3Bh
                      jz chattingmode  
                      cmp ah,3Ch
@@ -1183,7 +1606,7 @@ chattingmode: ;/////////////if f1 is pressed
 
 
 
-tempjump1:    ;becaus jumps are too big
+tempexitmain: jmp  Exitmain  ;becaus jumps are too big
 tempjump2:
 
 playingmode:  ;/////////////if f2 is pressed 
@@ -1196,32 +1619,41 @@ playingmode:  ;/////////////if f2 is pressed
 			  call InitializeGame ;set default values of memory
 			  
 		maingameloop:
+		
+				
+				mov cx, 0H    ;  delay
+				mov dx, 86A0H
+				mov ah, 86H
+				int 15H
+				
 				push si
                 push di
 				
 				call CLEARSHOOTER1  ;Shooter Functions
 				call CLEARSHOOTER2
+				call ADJUST_POSITION1
+				call ADJUST_POSITION2				
 				call DRAWSHOOTER1
 				call DRAWSHOOTER2
 				
-				call AddBullet ;Bullet functions
-				call BulletClear
-				call BulletAnimation
-                call BulletCollision
-				call drawbullet
+				call AddBullet1 ;Bullet functions
+				call BulletClear1
+				call BulletAnimation1
+                call BulletCollision1
+				call drawbullet1
 				
+				call AddBullet2 ;Bullet functions
+				call BulletClear2
+				call BulletAnimation2
+                call BulletCollision2
+				call drawbullet2
 				
-				call TimerPrint
+				call StatusBar
 				
 				
 				mov al,Timervalue
 				cmp al,0
-				jz Mainmenujump ; ***************** TO BE EDITED LATER TO SHOW SCORES ******************
-				
-				mov cx, 01H    ;  delay
-				mov dx, 86A0H
-				mov ah, 86H
-				int 15H
+				jz tempmainmenujmp ; ***************** TO BE EDITED LATER TO SHOW SCORES ******************
 				
                 pop di
                 pop si
@@ -1232,12 +1664,12 @@ playingmode:  ;/////////////if f2 is pressed
             mov ah,7    ;clear key from buffer
 			int 21h
 			cmp al,1bh
-            jz Mainmenujump
+            jz tempmainmenujmp
 			
 					 
      cont:  jmp maingameloop              
 	
-	
+	tempmainmenujmp:jmp Mainmenujump
 	Exitmain: 
 	mov ax,0003h
 	int 10h ;return video mode
