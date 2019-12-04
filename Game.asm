@@ -2,7 +2,132 @@
 
 ;;;;;;;MACROS;;;;;;;;;;;
 
-;Bugs TODO fix bullets bug relted to time int???
+
+
+;CHECK IF A BULLET HIT THE BLOCK FOR THE RIGTH BLOCKS
+BlockChecker1  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
+local EXITBLOCKCHECKER1
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,0                        
+JZ EXITBLOCKCHECKER1 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME X 
+JB EXITBLOCKCHECKER1                          
+                                              
+MOV BX,BLOCKYY                                
+cmp word ptr [si],BX                          
+JB EXITBLOCKCHECKER1                          
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight                            
+CMP word ptr [si],BX                          
+JA EXITBLOCKCHECKER1
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+inc Player1Score
+DELETEABLOCK BLOCKXX,BLOCKYY
+MOV BLOCKDRAWNNUMBER,0
+
+EXITBLOCKCHECKER1:
+ENDM
+
+;CHECK IF A BULLET HIT THE BLOCK FOR THE LEFT BLOCKS
+BlockChecker2  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
+local EXITBLOCKCHECKER2
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,0                        
+JZ EXITBLOCKCHECKER2 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME X 
+JG EXITBLOCKCHECKER2                          
+                                              
+MOV BX,BLOCKYY                                
+cmp word ptr [si],BX                          
+JB EXITBLOCKCHECKER2                         
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight                            
+CMP word ptr [si],BX                          
+JA EXITBLOCKCHECKER2
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+inc Player2Score
+DELETEABLOCK BLOCKXX,BLOCKYY
+MOV BLOCKDRAWNNUMBER,0
+
+EXITBLOCKCHECKER2:
+ENDM
+
+
+;DRAW A BLOCK MACRO
+DRAWABLOCK MACRO BLOCKX,BLOCKY ,BCOLOR
+	LOCAL @@DRAW,@@BACK  ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
+	MOV BX,00
+	ADD BX,BLOCKY
+	ADD BX,Blockheight  ;PUTTING IN BX BLOCK MAX LENGTH
+	@@DRAW:
+		MOV CX,BLOCKX	;DRAWING PIXELS HORIZONTALLY
+		MOV DX,BLOCKY	
+		MOV AL,BCOLOR	    ;CHOOSING COLOR
+		MOV AH,0CH
+	@@BACK:
+		INT 10H
+		INC CX
+		ADD BLOCKX,Blockwidth  ;BLOCK MAX WIDTH
+		CMP CX,BLOCKX
+		PUSHF			;ADJUSTING FLAGS
+		SUB BLOCKX,Blockwidth  
+		POPF
+		JNZ @@BACK   ;TILL HERE
+		
+	INC BLOCKY			
+	CMP BLOCKY,BX
+	JNE @@DRAW 		;KEEP DRAWING HORIZONTALLY
+	SUB BLOCKY,Blockheight   
+
+ENDM
+
+;DELETE A BLOCK MACRO
+DELETEABLOCK MACRO BLOCKX, BLOCKY
+    LOCAL @@DRAWW, @@BACKK         ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
+	MOV BX,00
+	ADD BX,BLOCKY
+	ADD BX,Blockheight	;PUTTING IN BX BLOCK MAX LENGTH
+	@@DRAWW:
+		MOV CX,BLOCKX	;DRAWING PIXELS HORIZONTALLY
+		MOV DX,BLOCKY	
+		MOV AL,0	    ;IN BLACK COLOR
+		MOV AH,0CH
+	@@BACKK:
+		INT 10H
+		INC CX
+		ADD BLOCKX,Blockwidth  ;BLOCK MAX WIDTH
+		CMP CX,BLOCKX
+		PUSHF			;ADJUSTING FLAGS
+		SUB BLOCKX,Blockwidth  
+		POPF
+		JNZ @@BACKK  
+		
+	INC BLOCKY		
+	CMP BLOCKY,BX
+	JNE @@DRAWW  		;KEEP DRAWING HORIZONTALLY
+	SUB BLOCKY,Blockheight
+	       
+	ENDM
+
+
+;
+;
 
 .Model Large
 .Stack 64
@@ -10,25 +135,139 @@
 IntroMessage db 'Press Space To Continue','$'
 TimeRemaining db "Time Remaining : ",'$'
 ScoreMessage db "Score : ",'$'
+player1wonmes db "Player 1 Wins !",'$'
+player2wonmes db "Player 2 Wins !",'$'
+itisadrawmes db "IT IS A DRAW !",'$'
+
 Bullets1X dw 10 dup(0),1
 Bullets1Y dw 10 dup(0),1
 Bullets2X dw 10 dup(0),1
 Bullets2Y dw 10 dup(0),1
+BulletSpeed equ 15
+
 SHOOTER1X DW 100   ;X COORDINATE FOR OUTLINE STARTING POINT
-SHOOTER1Y DW 250   ;Y COORDINATE FOR OUTLINE STARTING POINT
+SHOOTER1Y DW 210   ;Y COORDINATE FOR OUTLINE STARTING POINT
 SHOOTER2X DW 900  
-SHOOTER2Y DW 200
+SHOOTER2Y DW 410
+Shooter1Speed equ 30     ;shooter speeds in moving
+Shooter2Speed equ 30
+
+TOBEDRAWN DB 1
+TOBEDRAWNABLOCK DB 0,24 DUP(1)
+
+tempbulletx dw ?
+tempbullety dw ?
+temptobedrawn db ?
+
+Blockheight equ 90
+Blockwidth  equ 40
+
+BlocksLeftColor1  equ 11
+BlocksRightColor1 equ 12
+BlocksLeftColor2  equ 1
+BlocksRightColor2 equ 4
+
+;DATA FOR DRAWING Left WALLS
+;Block1
+
+BLOCK1X DW 4   ;X COORDINATE FOR BLOCK1 STARTING POINT
+BLOCK1Y DW 24   ;Y COORDINATE FOR BLOCK1 STARTING POINT
+
+;BLOCK2
+BLOCK2X DW 48   
+BLOCK2Y DW 24 
+
+;BLOCK3
+BLOCK3X DW 4 
+BLOCK3Y DW 118 
+
+;BLOCK4
+BLOCK4X DW 48 
+BLOCK4Y DW 118 
+
+;BLOCK5
+BLOCK5X DW 4  
+BLOCK5Y DW 212 
+
+;BLOCK6
+BLOCK6X DW 48  
+BLOCK6Y DW 212
+
+;BLOCK7
+BLOCK7X DW 4 
+BLOCK7Y DW 306 
+
+;BLOCK8
+BLOCK8X DW 48
+BLOCK8Y DW 306  
+
+;BLOCK9
+BLOCK9X DW 4   
+BLOCK9Y DW 400
+
+;BLOCK10
+BLOCK10X DW 48    
+BLOCK10Y DW 400
+
+;BLOCK11
+BLOCK11X DW 4 
+BLOCK11Y DW 494  
+
+;BLOCK12
+BLOCK12X DW 48    
+BLOCK12Y DW 494 
 
 
-block11Y dw 100,200,300,400,500,600
-block12Y dw 100,200,300,400,500,600
-block11x dw 6 dup(50)
-block12x dw	6 dup(10)
+;DATA FOR DRAWING LEFT WALLS
+;Block13                                 
+BLOCK13X DW 936  
+BLOCK13Y DW 24 
 
-block21Y dw 100,200,300,400,500,600
-block22Y dw 100,200,300,400,500,600
-block21x dw 6 dup(950)
-block22x dw	6 dup(990)
+
+;BLOCK14
+BLOCK14X DW 980   
+BLOCK14Y DW 24
+
+;BLOCK15
+BLOCK15X DW 936 
+BLOCK15Y DW 118
+
+;BLOCK16
+BLOCK16X DW 980
+BLOCK16Y DW 118
+
+;BLOCK17
+BLOCK17X DW 936 
+BLOCK17Y DW 212
+
+;BLOCK18
+BLOCK18X DW 980
+BLOCK18Y DW 212
+
+;BLOCK19
+BLOCK19X DW 936 
+BLOCK19Y DW 306
+
+;BLOCK20
+BLOCK20X DW 980
+BLOCK20Y DW 306 
+
+;BLOCK21
+BLOCK21X DW 936 
+BLOCK21Y DW 400
+
+;BLOCK22
+BLOCK22X DW 980  
+BLOCK22Y DW 400
+
+;BLOCK23
+BLOCK23X DW 936 
+BLOCK23Y DW 494
+
+;BLOCK24
+BLOCK24X DW 980  
+BLOCK24Y DW 494
+
 
 bulletaddtimer db ?
 booleantime db 0
@@ -51,6 +290,85 @@ BulletNumber equ 10
 ScreenWidth equ 1024
 Shooterlength equ 150
 .code
+
+
+;PROCEDURE TO DRAW RIGHT WALLS
+DRAWLEFTWALLS PROC
+    
+    DRAWABLOCK BLOCK1X,BLOCK1Y,BlocksRightColor2
+    DRAWABLOCK BLOCK2X,BLOCK2Y,BlocksRightColor1
+    DRAWABLOCK BLOCK3X,BLOCK3Y,BlocksRightColor2
+    DRAWABLOCK BLOCK4X,BLOCK4Y,BlocksRightColor1
+    DRAWABLOCK BLOCK5X,BLOCK5Y,BlocksRightColor2
+    DRAWABLOCK BLOCK6X,BLOCK6Y,BlocksRightColor1
+    DRAWABLOCK BLOCK7X,BLOCK7Y,BlocksRightColor2
+    DRAWABLOCK BLOCK8X,BLOCK8Y,BlocksRightColor1
+    DRAWABLOCK BLOCK9X,BLOCK9Y,BlocksRightColor2
+    DRAWABLOCK BLOCK10X,BLOCK10Y,BlocksRightColor1
+    DRAWABLOCK BLOCK11X,BLOCK11Y,BlocksRightColor2
+    DRAWABLOCK BLOCK12X,BLOCK12Y,BlocksRightColor1
+       
+    RET
+DRAWLEFTWALLS ENDP  
+
+;PROCEDURE TO DRAW LEFT WALLS
+DRAWRIGHTWALLS PROC 
+    
+    DRAWABLOCK BLOCK13X,BLOCK13Y,BlocksLeftColor1
+    DRAWABLOCK BLOCK14X,BLOCK14Y,BlocksLeftColor2
+    DRAWABLOCK BLOCK15X,BLOCK15Y,BlocksLeftColor1
+    DRAWABLOCK BLOCK16X,BLOCK16Y,BlocksLeftColor2
+    DRAWABLOCK BLOCK17X,BLOCK17Y,BlocksLeftColor1
+    DRAWABLOCK BLOCK18X,BLOCK18Y,BlocksLeftColor2
+    DRAWABLOCK BLOCK19X,BLOCK19Y,BlocksLeftColor1
+    DRAWABLOCK BLOCK20X,BLOCK20Y,BlocksLeftColor2
+    DRAWABLOCK BLOCK21X,BLOCK21Y,BlocksLeftColor1
+    DRAWABLOCK BLOCK22X,BLOCK22Y,BlocksLeftColor2
+    DRAWABLOCK BLOCK23X,BLOCK23Y,BlocksLeftColor1
+    DRAWABLOCK BLOCK24X,BLOCK24Y,BlocksLeftColor2
+       
+    RET
+DRAWRIGHTWALLS ENDP
+
+;PROCEDURE TO DELETE RIGHT WALLS
+DELETERIGHTWALLS PROC 
+    
+    DELETEABLOCK BLOCK1X,BLOCK1Y
+    DELETEABLOCK BLOCK2X,BLOCK2Y
+    DELETEABLOCK BLOCK3X,BLOCK3Y
+    DELETEABLOCK BLOCK4X,BLOCK4Y
+    DELETEABLOCK BLOCK5X,BLOCK5Y
+    DELETEABLOCK BLOCK6X,BLOCK6Y
+    DELETEABLOCK BLOCK7X,BLOCK7Y
+    DELETEABLOCK BLOCK8X,BLOCK8Y
+    DELETEABLOCK BLOCK9X,BLOCK9Y
+    DELETEABLOCK BLOCK10X,BLOCK10Y
+    DELETEABLOCK BLOCK11X,BLOCK11Y
+    DELETEABLOCK BLOCK12X,BLOCK12Y
+       
+    RET
+DELETERIGHTWALLS ENDP  
+
+;PROCEDURE TO DELETE LEFT WALLS
+DELETELEFTWALLS PROC
+    
+    DELETEABLOCK BLOCK13X,BLOCK13Y
+    DELETEABLOCK BLOCK14X,BLOCK14Y
+    DELETEABLOCK BLOCK15X,BLOCK15Y
+    DELETEABLOCK BLOCK16X,BLOCK16Y
+    DELETEABLOCK BLOCK17X,BLOCK17Y
+    DELETEABLOCK BLOCK18X,BLOCK18Y
+    DELETEABLOCK BLOCK19X,BLOCK19Y
+    DELETEABLOCK BLOCK20X,BLOCK20Y
+    DELETEABLOCK BLOCK21X,BLOCK21Y
+    DELETEABLOCK BLOCK22X,BLOCK22Y
+    DELETEABLOCK BLOCK23X,BLOCK23Y
+    DELETEABLOCK BLOCK24X,BLOCK24Y
+       
+    RET
+DELETELEFTWALLS ENDP
+
+
 
 ;---------------------------------------------------------------------------
 ;--------------------DRAW RECTANGLE OUTLINE---------------------------------
@@ -877,6 +1195,78 @@ GameName endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+ScoreScreen proc far
+
+	mov ax, 4f02h
+	mov bx, 105h
+	int 10h ;clear by calling graphics mode
+			  
+	call StatusBar
+	
+	mov bl,Player1Score
+	mov cl,Player2Score
+	
+	cmp bl,cl
+	ja player1won
+	jb player2won
+	jz itisadraw
+	
+	
+	player1won: mov ah,2   ;move cursor
+				mov dx,0E37h
+				mov bx,0
+				int 10h
+				
+				mov ah,9
+				lea dx,player1wonmes
+				int 21h
+				jmp printingpressspace
+				
+	player2won: mov ah,2   ;move cursor
+				mov dx,0E37h
+				mov bx,0
+				int 10h
+				
+				mov ah,9
+				lea dx,player2wonmes
+				int 21h
+				jmp printingpressspace
+	
+	
+	itisadraw:  mov ah,2   ;move cursor
+				mov dx,0E37h
+				mov bx,0
+				int 10h
+				
+				mov ah,9
+				lea dx,itisadrawmes
+				int 21h
+				jmp printingpressspace
+	
+	
+printingpressspace:	mov ah,2   ;move cursor
+					mov dx,1A34h
+					mov bx,0
+					int 10h
+	
+	mov ah,9
+	lea dx,IntroMessage
+	int 21h
+	
+	
+	;wait for key to exit
+WaitforSpace2:	
+				mov ah,07;clear key from buffer
+				int 21h
+				cmp al,32
+				jnz WaitforSpace2
+				
+	
+ret
+ScoreScreen endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 AddBullet1 proc far
 ;Add the Bullet to the memory location to be drawn
 	
@@ -983,10 +1373,14 @@ BulletCollision1 proc far
 mov si,offset Bullets1X    ;check if the bullets positions (if not zero) are collided with something  
 mov di,offset Bullets1y
 mov cx,11 
-loopBulletcollision:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
-                    jz beginnextcollisionchecking  
+loopBulletcollision:push cx
+					cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
+                    jz tempbeginnextcollisionchecking  
                     cmp word ptr[di],0
-                    jz beginnextcollisionchecking 
+                    jz tempbeginnextcollisionchecking 
+					jmp checkBullWithShooterColl
+					
+					tempbeginnextcollisionchecking:jmp beginnextcollisionchecking
 					
 					checkBullWithShooterColl:mov bx,SHOOTER2X
 											 cmp word ptr[di],bx ;x position compare
@@ -1001,24 +1395,26 @@ loopBulletcollision:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THE
 											 mov word ptr[si],0
 											 mov word ptr[di],0
 											 jmp beginnextcollisionchecking
-			        checkbullblock1:mov bx,block21x								 
-									cmp word ptr[di],bx
-									jbe checkbullblock2
-									mov word ptr[si],0
-									mov word ptr[di],0
-									;;delete block 
-									jmp beginnextcollisionchecking
 											 
-					
-					checkbullblock2:mov bx,block22x								 
-									cmp word ptr[di],bx
-									jbe checkbulllimit
-									mov word ptr[si],0
-									mov word ptr[di],0
-									;;delete block 
-									jmp beginnextcollisionchecking
-					
-					checkbulllimit: cmp word ptr [di],ScreenWidth
+											 
+			        checkbullblock1:	mov tempbullety,si
+										mov tempbulletx,di
+										BlockChecker1 tempbulletx, tempbullety, BLOCK13X,BLOCK13Y,TOBEDRAWNABLOCK+13
+										BlockChecker1 tempbulletx, tempbullety, BLOCK14X,BLOCK14Y,TOBEDRAWNABLOCK+14
+										BlockChecker1 tempbulletx, tempbullety, BLOCK15X,BLOCK15Y,TOBEDRAWNABLOCK+15
+										BlockChecker1 tempbulletx, tempbullety, BLOCK16X,BLOCK16Y,TOBEDRAWNABLOCK+16
+										BlockChecker1 tempbulletx, tempbullety, BLOCK17X,BLOCK17Y,TOBEDRAWNABLOCK+17
+										BlockChecker1 tempbulletx, tempbullety, BLOCK18X,BLOCK18Y,TOBEDRAWNABLOCK+18
+										BlockChecker1 tempbulletx, tempbullety, BLOCK19X,BLOCK19Y,TOBEDRAWNABLOCK+19
+										BlockChecker1 tempbulletx, tempbullety, BLOCK20X,BLOCK20Y,TOBEDRAWNABLOCK+20
+										BlockChecker1 tempbulletx, tempbullety, BLOCK21X,BLOCK21Y,TOBEDRAWNABLOCK+21
+										BlockChecker1 tempbulletx, tempbullety, BLOCK22X,BLOCK22Y,TOBEDRAWNABLOCK+22
+										BlockChecker1 tempbulletx, tempbullety, BLOCK23X,BLOCK23Y,TOBEDRAWNABLOCK+23
+										BlockChecker1 tempbulletx, tempbullety, BLOCK24X,BLOCK24Y,TOBEDRAWNABLOCK+24
+										
+									
+										
+					checkbulllimit: cmp word ptr [di],ScreenWidth-10
 									jbe beginnextcollisionchecking
 									mov word ptr[si],0
 									mov word ptr[di],0
@@ -1026,11 +1422,13 @@ loopBulletcollision:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THE
 					
                 beginnextcollisionchecking:add si,2
 										   add di,2
+										   pop cx
 										   dec cx  
 										   cmp cx,0
-				                   jnz loopBulletcollision
-								  
+				                   jnz temploopBulletcollision
+								   jz BulletCollisionreturn
 				
+temploopBulletcollision: jmp loopBulletcollision
 
 BulletCollisionreturn: ret
 
@@ -1052,10 +1450,15 @@ BulletCollision2 proc far
 mov si,offset Bullets2X    ;check if the bullets positions (if not zero) are collided with something  
 mov di,offset Bullets2y
 mov cx,11 
-loopBulletcollision2:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
-                    jz beginnextcollisionchecking2  
+loopBulletcollision2:push cx
+					cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
+                    jz tempbeginnextcollisionchecking2  
                     cmp word ptr[di],0
-                    jz beginnextcollisionchecking2
+                    jz tempbeginnextcollisionchecking2
+					jmp checkBullWithShooterColl2
+					
+					tempbeginnextcollisionchecking2:jmp beginnextcollisionchecking2
+					
 					
 					checkBullWithShooterColl2:mov bx,SHOOTER1X
 											 cmp word ptr[di],bx
@@ -1069,25 +1472,26 @@ loopBulletcollision2:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF TH
 											 jg checkbullblock12
 											 mov word ptr[si],0
 											 mov word ptr[di],0
-											 jmp beginnextcollisionchecking2                      
-			        checkbullblock12:mov bx,block11x								 
-									cmp word ptr[di],bx
-									jge checkbullblock22
-									mov word ptr[si],0
-									mov word ptr[di],0
-									;;delete block 
-									jmp beginnextcollisionchecking2
+											 jmp beginnextcollisionchecking2  
+
 											 
-					
-					checkbullblock22:mov bx,block12x								 
-									cmp word ptr[di],bx
-									jge checkbulllimit2
-									mov word ptr[si],0
-									mov word ptr[di],0
-									;;delete block 
-									jmp beginnextcollisionchecking2
-					
-					checkbulllimit2: cmp word ptr [di],0 ;screen limit
+			        checkbullblock12:
+									 mov tempbullety,si
+									 mov tempbulletx,di
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK1X ,BLOCK1Y ,TOBEDRAWNABLOCK+1
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK2X ,BLOCK2Y ,TOBEDRAWNABLOCK+2
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK3X ,BLOCK3Y ,TOBEDRAWNABLOCK+3
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK4X ,BLOCK4Y ,TOBEDRAWNABLOCK+4
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK5X ,BLOCK5Y ,TOBEDRAWNABLOCK+5
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK6X ,BLOCK6Y ,TOBEDRAWNABLOCK+6
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK7X ,BLOCK7Y ,TOBEDRAWNABLOCK+7
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK8X ,BLOCK8Y ,TOBEDRAWNABLOCK+8
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK9X ,BLOCK9Y ,TOBEDRAWNABLOCK+9
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK10X,BLOCK10Y,TOBEDRAWNABLOCK+10
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK11X,BLOCK11Y,TOBEDRAWNABLOCK+11
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK12X,BLOCK12Y,TOBEDRAWNABLOCK+12
+									 
+					checkbulllimit2:cmp word ptr [di],0 ;screen limit
 									jge beginnextcollisionchecking2
 									mov word ptr[si],0
 									mov word ptr[di],0
@@ -1095,11 +1499,13 @@ loopBulletcollision2:cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF TH
 					
                 beginnextcollisionchecking2:add si,2
 										   add di,2
+										   pop cx
 										   dec cx  
 										   cmp cx,0
-				                   jnz loopBulletcollision2
-								  
+				                   jnz temploopBulletcollision2
+								   jz BulletCollisionreturn2
 				
+temploopBulletcollision2: jmp loopBulletcollision2
 
 BulletCollisionreturn2: ret
 
@@ -1263,7 +1669,7 @@ BulletClear1 proc far
      mov si,offset Bullets1X
      mov di,offset Bullets1Y
 	  
-		  mov cx,11
+		  mov cx,10
      beginClearing:push cx
 	      cmp word ptr [si],0
           jz nexttoClear
@@ -1310,7 +1716,7 @@ BulletClear2 proc far
      mov si,offset Bullets2X
      mov di,offset Bullets2Y
 	  
-		  mov cx,11
+		  mov cx,10
      beginClearing2:push cx
 	      cmp word ptr [si],0
           jz nexttoClear2
@@ -1360,7 +1766,7 @@ loopanimationbullet:cmp word ptr [si],0
 					cmp word ptr [di],0
 					jz beginnextanimation
 					
-					add word ptr [di],30
+					add word ptr [di],BulletSpeed
 					
                 beginnextanimation:add si,2
 								   add di,2
@@ -1384,7 +1790,7 @@ loopanimationbullet2:cmp word ptr [si],0
 					cmp word ptr [di],0
 					jz beginnextanimation2
 					
-					sub word ptr [di],30
+					sub word ptr [di],BulletSpeed
 					
                 beginnextanimation2:
 								   add si,2
@@ -1400,7 +1806,7 @@ BulletAnimation2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
+ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 		
 				;CHECKING WHETHER USER HAS PRESSED A KEY
@@ -1418,9 +1824,9 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	
 	
 	UP_PRESSED:
-		CMP SHOOTER2Y,50
+		CMP SHOOTER2Y,30
 		JL exitadjust1
-		SUB SHOOTER2Y,50  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
+		SUB SHOOTER2Y,Shooter2Speed  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
 		MOV BX,0       
 		mov ah,7    ;clear key from buffer
 		int 21h
@@ -1428,9 +1834,9 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	
 	DOWN_PRESSED:
 						;SINCE DOWN HAS BEEN PRESSED, WILL INCREMENT THE Y COORDINATE 
-		CMP SHOOTER2Y,450
+		CMP SHOOTER2Y,460
 		JGE exitadjust1
-		ADD SHOOTER2Y,50
+		ADD SHOOTER2Y,Shooter2Speed
 		MOV BX,0
 		mov ah,7    ;clear key from buffer
 		int 21h
@@ -1439,12 +1845,12 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		
 exitadjust1:	RET
 
-ADJUST_POSITION1 ENDP
+ADJUST_POSITION2 ENDP
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
+ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 		
 				;CHECKING WHETHER USER HAS PRESSED A KEY
@@ -1462,9 +1868,9 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	
 	
 	UP_PRESSED2:
-		CMP SHOOTER1Y,0
+		CMP SHOOTER1Y,30
 		JLE exitadjust2
-		SUB SHOOTER1Y,50  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
+		SUB SHOOTER1Y,Shooter1Speed  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
 		MOV BX,0       
 		mov ah,7    ;clear key from buffer
 		int 21h
@@ -1472,9 +1878,9 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	
 	DOWN_PRESSED2:
 						;SINCE DOWN HAS BEEN PRESSED, WILL INCREMENT THE Y COORDINATE 
-		CMP SHOOTER1Y,440
+		CMP SHOOTER1Y,470
 		JGE exitadjust2
-		ADD SHOOTER1Y,50
+		ADD SHOOTER1Y,Shooter1Speed
 		MOV BX,0
 		mov ah,7    ;clear key from buffer
 		int 21h
@@ -1483,14 +1889,14 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		
 exitadjust2:	RET
 
-ADJUST_POSITION2 ENDP
+ADJUST_POSITION1 ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 InitializeGame proc far
 ;Sets the memory to the Default values of beggining a new game
 
-mov Bullets2Y   ,0
+mov Bullets2Y   ,0 ;Player 2 Bullets Init
 mov Bullets2Y+2 ,0
 mov Bullets2Y+4 ,0
 mov Bullets2Y+6 ,0
@@ -1512,7 +1918,7 @@ mov Bullets2X+14,0
 mov Bullets2X+16,0
 mov Bullets2X+18,0
 
-mov Bullets1Y   ,0
+mov Bullets1Y   ,0 ;Player 1 Bullet Init
 mov Bullets1Y+2 ,0
 mov Bullets1Y+4 ,0
 mov Bullets1Y+6 ,0
@@ -1534,41 +1940,15 @@ mov Bullets1X+14,0
 mov Bullets1X+16,0
 mov Bullets1X+18,0
 
-mov SHOOTER1X , 100   
-mov SHOOTER1Y , 250   
+
+mov SHOOTER1X , 100  ;Shooter Init
+mov SHOOTER1Y , 200   
 mov SHOOTER2X , 900  
-mov SHOOTER2Y , 200
+mov SHOOTER2Y , 430
 
-mov block22Y   ,100
-mov block22Y+2 ,200
-mov block22Y+4 ,300
-mov block22Y+6 ,400
-mov block22Y+8 ,500
-mov block22Y+10,600
 
-mov block21Y   ,100
-mov block21Y+2 ,200
-mov block21Y+4 ,300
-mov block21Y+6 ,400
-mov block21Y+8 ,500
-mov block21Y+10,600
-
-mov block21x   ,950
-mov block21x+2 ,950
-mov block21x+4 ,950
-mov block21x+6 ,950
-mov block21x+8 ,950
-mov block21x+10,950
-
-mov block22x   ,990
-mov block22x+2 ,990
-mov block22x+4 ,990
-mov block22x+6 ,990
-mov block22x+8 ,990
-mov block22x+10,990
-
-mov booleantime,0
-mov Timervalue,60
+mov booleantime,0  ;Timer Init
+mov Timervalue,20
 mov booleantime2,0
 
 ret
@@ -1618,6 +1998,10 @@ playingmode:  ;/////////////if f2 is pressed
 			  
 			  call InitializeGame ;set default values of memory
 			  
+			  CALL DRAWRIGHTWALLS ;draw blocks
+			  CALL DRAWLEFTWALLS  
+				
+				
 		maingameloop:
 		
 				
@@ -1628,6 +2012,7 @@ playingmode:  ;/////////////if f2 is pressed
 				
 				push si
                 push di
+				
 				
 				call CLEARSHOOTER1  ;Shooter Functions
 				call CLEARSHOOTER2
@@ -1653,7 +2038,13 @@ playingmode:  ;/////////////if f2 is pressed
 				
 				mov al,Timervalue
 				cmp al,0
-				jz tempmainmenujmp ; ***************** TO BE EDITED LATER TO SHOW SCORES ******************
+				jz ScoreScreenjmp ; ***************** TO BE EDITED LATER TO SHOW SCORES ******************
+				
+				cmp Player1Score,12
+				jz ScoreScreenjmp ;***************** TO BE EDITED LATER TO SHOW SCORES ******************
+				
+				cmp Player2Score,12
+				jz ScoreScreenjmp ;***************** TO BE EDITED LATER TO SHOW SCORES ******************
 				
                 pop di
                 pop si
@@ -1670,6 +2061,10 @@ playingmode:  ;/////////////if f2 is pressed
      cont:  jmp maingameloop              
 	
 	tempmainmenujmp:jmp Mainmenujump
+	
+	ScoreScreenjmp: call ScoreScreen
+					jmp Mainmenujump
+	
 	Exitmain: 
 	mov ax,0003h
 	int 10h ;return video mode
