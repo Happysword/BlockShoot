@@ -143,7 +143,7 @@ Bullets1X dw 10 dup(0),1
 Bullets1Y dw 10 dup(0),1
 Bullets2X dw 10 dup(0),1
 Bullets2Y dw 10 dup(0),1
-BulletSpeed equ 15
+BulletSpeed equ 20
 
 SHOOTER1X DW 100   ;X COORDINATE FOR OUTLINE STARTING POINT
 SHOOTER1Y DW 210   ;Y COORDINATE FOR OUTLINE STARTING POINT
@@ -288,7 +288,7 @@ notbarmess db 128 dup('_'),10,'$'
 notbarmess2 db 128 dup('-'),10,'$' 
 BulletNumber equ 10
 ScreenWidth equ 1024
-Shooterlength equ 150
+Shooterlength equ 120
 .code
 
 
@@ -1414,7 +1414,7 @@ loopBulletcollision:push cx
 										
 									
 										
-					checkbulllimit: cmp word ptr [di],ScreenWidth-10
+					checkbulllimit: cmp word ptr [di],ScreenWidth-15
 									jbe beginnextcollisionchecking
 									mov word ptr[si],0
 									mov word ptr[di],0
@@ -1496,7 +1496,6 @@ loopBulletcollision2:push cx
 									mov word ptr[si],0
 									mov word ptr[di],0
 									
-					
                 beginnextcollisionchecking2:add si,2
 										   add di,2
 										   pop cx
@@ -1948,8 +1947,38 @@ mov SHOOTER2Y , 430
 
 
 mov booleantime,0  ;Timer Init
-mov Timervalue,20
+mov Timervalue,60
 mov booleantime2,0
+
+MOV TOBEDRAWNABLOCK+1,1 
+MOV TOBEDRAWNABLOCK+2,1 
+MOV TOBEDRAWNABLOCK+3,1 
+MOV TOBEDRAWNABLOCK+4,1 
+MOV TOBEDRAWNABLOCK+5,1 
+MOV TOBEDRAWNABLOCK+6,1 
+MOV TOBEDRAWNABLOCK+7,1 
+MOV TOBEDRAWNABLOCK+8,1 
+MOV TOBEDRAWNABLOCK+9,1 
+MOV TOBEDRAWNABLOCK+10,1 
+MOV TOBEDRAWNABLOCK+11,1 
+MOV TOBEDRAWNABLOCK+12,1 
+MOV TOBEDRAWNABLOCK+13,1 
+MOV TOBEDRAWNABLOCK+14,1 
+MOV TOBEDRAWNABLOCK+15,1 
+MOV TOBEDRAWNABLOCK+16,1 
+MOV TOBEDRAWNABLOCK+17,1 
+MOV TOBEDRAWNABLOCK+18,1 
+MOV TOBEDRAWNABLOCK+19,1
+MOV TOBEDRAWNABLOCK+20,1 
+MOV TOBEDRAWNABLOCK+21,1 
+MOV TOBEDRAWNABLOCK+22,1 
+MOV TOBEDRAWNABLOCK+23,1
+MOV TOBEDRAWNABLOCK+24,1    
+
+MOV booleantime3 , 0
+
+mov Player1Score,0
+mov Player2Score,0
 
 ret
 InitializeGame endp
@@ -2006,7 +2035,7 @@ playingmode:  ;/////////////if f2 is pressed
 		
 				
 				mov cx, 0H    ;  delay
-				mov dx, 86A0H
+				mov dx, 8235h
 				mov ah, 86H
 				int 15H
 				
