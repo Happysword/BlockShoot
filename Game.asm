@@ -269,6 +269,28 @@ BLOCK24X DW 980
 BLOCK24Y DW 494
 
 
+
+bulletcolorfacingleft   db 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,01
+						db 00,00,00,00,00,00,43,43,43,43,43,43,43,43,00,00,01,01,01,01
+						db 00,00,00,00,43,43,43,43,43,43,43,43,43,43,00,00,01,01,01,01
+						db 00,00,01,01,43,43,43,43,43,43,43,43,43,43,43,43,01,01,01,01
+						db 00,01,01,43,43,43,43,43,43,43,43,43,43,43,43,43,01,01,01,01
+						db 00,01,01,43,43,43,43,43,43,43,43,43,43,43,43,43,01,01,01,01
+						db 00,00,01,01,43,43,43,43,43,43,43,43,43,43,43,43,01,01,01,01
+						db 00,00,00,00,43,43,43,43,43,43,43,43,43,43,00,00,01,01,01,01
+						db 00,00,00,00,00,00,43,43,43,43,43,43,43,43,00,00,01,01,01,01
+						db 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,01
+						
+bulletcolorfacingright  db 04,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+                        db 04,04,04,04,00,00,43,43,43,43,43,43,43,43,00,00,00,00,00,00
+                        db 04,04,04,04,00,00,43,43,43,43,43,43,43,43,43,43,00,00,00,00
+                        db 04,04,04,04,43,43,43,43,43,43,43,43,43,43,43,43,04,04,00,00
+                        db 04,04,04,04,43,43,43,43,43,43,43,43,43,43,43,43,43,04,04,00
+                        db 04,04,04,04,43,43,43,43,43,43,43,43,43,43,43,43,43,04,04,00
+                        db 04,04,04,04,43,43,43,43,43,43,43,43,43,43,43,43,04,04,00,00
+                        db 04,04,04,04,00,00,43,43,43,43,43,43,43,43,43,43,00,00,00,00
+                        db 04,04,04,04,00,00,43,43,43,43,43,43,43,43,00,00,00,00,00,00
+                        db 04,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
 bulletaddtimer db ?
 booleantime db 0
 bulletaddtimer2 db ?
@@ -289,6 +311,11 @@ notbarmess2 db 128 dup('-'),10,'$'
 BulletNumber equ 10
 ScreenWidth equ 1024
 Shooterlength equ 120
+
+CounterFreeze1 db 0
+BooleanFreeze1 db 0
+CounterFreeze2 db 0
+BooleanFreeze2 db 0
 .code
 
 
@@ -1271,18 +1298,27 @@ AddBullet1 proc far
 ;Add the Bullet to the memory location to be drawn
 	
 	;timer to add bullets every second
-	mov ax,2c00h 
-	int 21h   
-	cmp booleantime,0
-	jnz hastimecome
-	mov bulletaddtimer,dh
-	mov booleantime,1
+	; mov ax,2c00h 
+	; int 21h   
+	; cmp booleantime,0
+	; jnz hastimecome
+	; mov bulletaddtimer,dh
+	; mov booleantime,1
 	
-	hastimecome:	
-		cmp dh,bulletaddtimer
-		jz addbulletreturn
-		mov bulletaddtimer,dh
+	; hastimecome:	
+		; cmp dh,bulletaddtimer
+		; jz addbulletreturn
+		; mov bulletaddtimer,dh
 		
+	
+	mov ah,1    ;check if player pressed space
+    int 16h
+	jz addbulletreturn
+    cmp al,32
+    jnz addbulletreturn
+	mov ah,7    ;clear key from buffer
+	int 21h
+	
 	
 	Mov CX,BulletNumber
 	LEA SI,Bullets1X
@@ -1322,18 +1358,27 @@ AddBullet2 proc far
 ;Add the Bullet to the memory location to be drawn
 	
 	;timer to add bullets every second
-	mov ax,2c00h 
-	int 21h   
-	cmp booleantime2,0
-	jnz hastimecome2
-	mov bulletaddtimer2,dh
-	mov booleantime2,1
+	;mov ax,2c00h 
+	;int 21h   
+	;cmp booleantime2,0
+	;jnz hastimecome2
+	;mov bulletaddtimer2,dh
+	;mov booleantime2,1
+	;
+	;hastimecome2:	
+	;	cmp dh,bulletaddtimer2
+	;	jz addbulletreturn2
+	;	mov bulletaddtimer2,dh
 	
-	hastimecome2:	
-		cmp dh,bulletaddtimer2
-		jz addbulletreturn2
-		mov bulletaddtimer2,dh
-		
+
+	mov ah,1    ;check if player pressed space
+    int 16h
+	jz addbulletreturn2
+    cmp al,120 ;x key for shooting
+    jnz addbulletreturn2
+	mov ah,7    ;clear key from buffer
+	int 21h
+	
 	
 	Mov CX,BulletNumber
 	LEA SI,Bullets2X
@@ -1394,7 +1439,16 @@ loopBulletcollision:push cx
 											 jg checkbullblock1
 											 mov word ptr[si],0
 											 mov word ptr[di],0
+											 add CounterFreeze1,1
+											  mov BooleanFreeze1,0
+											 cmp CounterFreeze1,5
+											 jnz temp1beginnextcollisionchecking
+										
+											 mov BooleanFreeze1,100;shooter2 should be freezed for 5sec 
+											 mov CounterFreeze1,0
 											 jmp beginnextcollisionchecking
+											 
+					temp1beginnextcollisionchecking: jmp beginnextcollisionchecking		
 											 
 											 
 			        checkbullblock1:	mov tempbullety,si
@@ -1472,7 +1526,16 @@ loopBulletcollision2:push cx
 											 jg checkbullblock12
 											 mov word ptr[si],0
 											 mov word ptr[di],0
+											 add CounterFreeze2,1
+											  mov BooleanFreeze2,0
+											 cmp CounterFreeze2,5
+											 jnz temp2beginnextcollisionchecking2
+										
+											 mov BooleanFreeze2,100;shooter1 should be freezed for 5sec 
+											 mov CounterFreeze2,0
 											 jmp beginnextcollisionchecking2  
+
+					temp2beginnextcollisionchecking2: jmp beginnextcollisionchecking2	
 
 											 
 			        checkbullblock12:
@@ -1583,25 +1646,28 @@ drawbullet1 proc far
           jz nexttoDraw
 	       mov cx,[di] 
            mov dx,[si] 
-           mov ax,[si] 
-           add ax,10 
-            
-           mov bx,[di] 
-           add bx,20 
-           
-     loopoutery: mov dx,[si]
-	 
+		   
+		   lea bx,bulletcolorfacingright
+		   
+		   mov al,10
+		   mov ah,20
+		   
+     loopoutery: mov cx,[di]
+				 mov ah,20
            loopinnerx:push ax
-                      mov al,4h
+                      mov al,[bx]
                       mov ah,0ch
                       int 10h 
                       pop ax 
-                      inc dx 
-                      cmp dx,ax
+                      inc cx 
+					  inc bx
+					  dec ah
+                      cmp ah,0
                       jnz loopinnerx
                       
-           inc cx
-           cmp cx,bx
+           inc dx
+		   dec al
+           cmp al,0
            jnz loopoutery
            
           
@@ -1621,7 +1687,7 @@ drawbullet2 proc far
      mov si,offset Bullets2X
      mov di,offset Bullets2Y
 	  
-		  mov cx,11
+		  mov cx,10
      begin2:push cx
 	      cmp word ptr [si],0
           jz nexttoDraw2
@@ -1629,25 +1695,29 @@ drawbullet2 proc far
           jz nexttoDraw2
 	       mov cx,[di] 
            mov dx,[si] 
-           mov ax,[si] 
-           add ax,10 
-            
-           mov bx,[di] 
-           add bx,20 
            
-     loopoutery2: mov dx,[si]
-	 
+		   lea bx,bulletcolorfacingleft
+		   
+		   mov al,10
+		   mov ah,20
+		   
+		   
+     loopoutery2: mov cx,[di]
+				  mov ah,20
            loopinnerx2:push ax
-                      mov al,9h
+                      mov al,[bx]
                       mov ah,0ch
                       int 10h 
                       pop ax 
-                      inc dx 
-                      cmp dx,ax
+                      inc cx
+					  inc bx
+					  dec ah
+                      cmp ah,0
                       jnz loopinnerx2
                       
-           inc cx
-           cmp cx,bx
+           inc dx
+		   dec al
+           cmp al,0
            jnz loopoutery2
            
           
@@ -1807,9 +1877,14 @@ BulletAnimation2 endp
 
 ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
+						 
+		cmp BooleanFreeze1,0 ;checking if  shooter1 is freezed
+          jz StartAdj2	
+        dec BooleanFreeze1
+		jmp exitadjust1	
 		
 				;CHECKING WHETHER USER HAS PRESSED A KEY
-		MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
+	StartAdj2:	MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
 		INT 16H
 		jz exitadjust1
 	
@@ -1851,9 +1926,14 @@ ADJUST_POSITION2 ENDP
 
 ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
-		
+						 
+		cmp BooleanFreeze2,0 ;checking if  shooter1 is freezed
+          jz StartAdj1	
+           dec BooleanFreeze2
+	      jmp exitadjust2
+		  
 				;CHECKING WHETHER USER HAS PRESSED A KEY
-		MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
+	StartAdj1:	MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
 		INT 16H
 		jz exitadjust2
 	
@@ -1979,6 +2059,11 @@ MOV booleantime3 , 0
 
 mov Player1Score,0
 mov Player2Score,0
+
+mov CounterFreeze1,0
+mov BooleanFreeze1,0
+mov CounterFreeze2,0
+mov BooleanFreeze2,0
 
 ret
 InitializeGame endp
