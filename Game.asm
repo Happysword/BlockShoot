@@ -3,7 +3,6 @@
 ;;;;;;;MACROS;;;;;;;;;;;
 
 
-
 ;CHECK IF A BULLET HIT THE BLOCK FOR THE RIGTH BLOCKS
 BlockChecker1  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
 local EXITBLOCKCHECKER1
@@ -35,6 +34,40 @@ MOV BLOCKDRAWNNUMBER,0
 
 EXITBLOCKCHECKER1:
 ENDM
+
+BlockCheckermiddle1  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
+local EXITBLOCKCHECKERMIDDLE1
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,0                        
+JZ EXITBLOCKCHECKERMIDDLE1 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME first X 
+JB EXITBLOCKCHECKERMIDDLE1      
+
+MOV BX,BLOCKXX  
+ADD BX,BlockwidthMiddle+20               
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME  last X 
+JG EXITBLOCKCHECKERMIDDLE1                          
+                                              
+MOV BX,BLOCKYY                                
+cmp word ptr [si],BX                          
+JB EXITBLOCKCHECKERMIDDLE1                          
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight                            
+CMP word ptr [si],BX                          
+JA EXITBLOCKCHECKERMIDDLE1
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+
+EXITBLOCKCHECKERMIDDLE1:
+ENDM
+
 
 ;CHECK IF A BULLET HIT THE BLOCK FOR THE LEFT BLOCKS
 BlockChecker2  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
@@ -68,6 +101,41 @@ MOV BLOCKDRAWNNUMBER,0
 EXITBLOCKCHECKER2:
 ENDM
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BlockCheckermiddle2  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
+local EXITBLOCKCHECKERMIDDLE2
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,0                        
+JZ EXITBLOCKCHECKERMIDDLE2 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME first X 
+JG EXITBLOCKCHECKERMIDDLE2     
+               
+MOV BX,BLOCKXX  
+sub bx,BlockwidthMiddle+20                              
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME last X 
+JL EXITBLOCKCHECKERMIDDLE2                          
+                                              
+MOV BX,BLOCKYY                                
+cmp word ptr [si],BX                          
+JB EXITBLOCKCHECKERMIDDLE2                         
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight                            
+CMP word ptr [si],BX                          
+JA EXITBLOCKCHECKERMIDDLE2
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+
+EXITBLOCKCHECKERMIDDLE2:
+ENDM
+
 
 ;DRAW A BLOCK MACRO
 DRAWABLOCK MACRO BLOCKX,BLOCKY ,BCOLOR
@@ -87,6 +155,34 @@ DRAWABLOCK MACRO BLOCKX,BLOCKY ,BCOLOR
 		CMP CX,BLOCKX
 		PUSHF			;ADJUSTING FLAGS
 		SUB BLOCKX,Blockwidth  
+		POPF
+		JNZ @@BACK   ;TILL HERE
+		
+	INC BLOCKY			
+	CMP BLOCKY,BX
+	JNE @@DRAW 		;KEEP DRAWING HORIZONTALLY
+	SUB BLOCKY,Blockheight   
+
+ENDM
+
+;DRAW A BLOCK MACRO
+DRAWABLOCKMIDDLE MACRO BLOCKX,BLOCKY ,BCOLOR
+	LOCAL @@DRAW,@@BACK  ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
+	MOV BX,00
+	ADD BX,BLOCKY
+	ADD BX,Blockheight  ;PUTTING IN BX BLOCK MAX LENGTH
+	@@DRAW:
+		MOV CX,BLOCKX	;DRAWING PIXELS HORIZONTALLY
+		MOV DX,BLOCKY	
+		MOV AL,BCOLOR	    ;CHOOSING COLOR
+		MOV AH,0CH
+	@@BACK:
+		INT 10H
+		INC CX
+		ADD BLOCKX,BlockwidthMiddle  ;BLOCK MAX WIDTH
+		CMP CX,BLOCKX
+		PUSHF			;ADJUSTING FLAGS
+		SUB BLOCKX,BlockwidthMiddle  
 		POPF
 		JNZ @@BACK   ;TILL HERE
 		
@@ -124,6 +220,7 @@ DELETEABLOCK MACRO BLOCKX, BLOCKY
 	SUB BLOCKY,Blockheight
 	       
 	ENDM
+
 
 
 ;
@@ -268,7 +365,29 @@ BLOCK23Y DW 494
 BLOCK24X DW 980  
 BLOCK24Y DW 494
 
+;;;;;;;;;;;;;;;;;;MIDDLE BLOCKS MEMORY
 
+MiddleBlocksx1 dw 500 
+MiddleBlocksy1 dw 24
+MiddleBlocksx2 dw 500
+MiddleBlocksy2 dw 118
+MiddleBlocksx3 dw 500
+MiddleBlocksy3 dw 212
+MiddleBlocksx4 dw 500
+MiddleBlocksy4 dw 306
+MiddleBlocksx5 dw 500
+MiddleBlocksy5 dw 400
+MiddleBlocksx6 dw 500
+MiddleBlocksy6 dw 494
+
+MiddleBlockcolor db 1Fh 
+BlockwidthMiddle equ 10
+Middleblockboolean db 0
+Middleblockbooleaninverted db 1
+booleantime4 db 0
+MiddleTimeValue db ?
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 bulletcolorfacingleft   db 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,01
 						db 00,00,00,00,00,00,43,43,43,43,43,43,43,43,00,00,01,01,01,01
@@ -316,7 +435,32 @@ CounterFreeze1 db 0
 BooleanFreeze1 db 0
 CounterFreeze2 db 0
 BooleanFreeze2 db 0
+maxfreezetime equ 100
+
+Clearcolor db 0h
+
 .code
+
+;procedure to clear screen
+ClearALLScreen Proc far
+
+mov cx,0
+mov dx,0
+mov al,Clearcolor
+mov ah,0ch
+
+ClearALLscreenouter:
+				mov dx,0
+		ClearALLscreeninner:
+						int 10h 
+						inc dx
+						cmp dx,768
+						jnz ClearALLscreeninner
+				inc cx 
+				cmp cx,1024
+				jnz ClearALLscreenouter
+ret				
+ClearALLScreen endp
 
 
 ;PROCEDURE TO DRAW RIGHT WALLS
@@ -377,7 +521,7 @@ DELETERIGHTWALLS PROC
 DELETERIGHTWALLS ENDP  
 
 ;PROCEDURE TO DELETE LEFT WALLS
-DELETELEFTWALLS PROC
+DELETELEFTWALLS PROC 
     
     DELETEABLOCK BLOCK13X,BLOCK13Y
     DELETEABLOCK BLOCK14X,BLOCK14Y
@@ -395,7 +539,65 @@ DELETELEFTWALLS PROC
     RET
 DELETELEFTWALLS ENDP
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+DRAWMIDDLEBLOCKS PROC FAR
+
+cmp Middleblockboolean,0
+jnz drawoddmiddle 
+
+tempdrawevenmiddle:jmp drawevenmiddle
+
+drawoddmiddle:
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy1,MiddleBlockcolor ;draw
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy3,MiddleBlockcolor
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy5,MiddleBlockcolor
+
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy2,0h ;delete
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy4,0h
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy6,0h
+
+jmp Drawmiddleexit 
+
+drawevenmiddle:
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy2,MiddleBlockcolor ;draw
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy4,MiddleBlockcolor
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy6,MiddleBlockcolor
+
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy1,0h ;delete
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy3,0h
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy5,0h
+
+Drawmiddleexit:RET
+
+DRAWMIDDLEBLOCKS ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BlinkMiddleandInvert proc far
+
+	mov ax,2c00h 
+	int 21h   
+	cmp booleantime4,0
+	jnz hastimecomemiddle
+	mov MiddleTimeValue,dh
+	mov booleantime4,1
+	
+	hastimecomemiddle:	
+		cmp dh,MiddleTimeValue
+		jz middleinvertjmp
+		
+		mov MiddleTimeValue,dh  ;invert the blocks
+		mov al,Middleblockboolean
+		mov ah,Middleblockbooleaninverted
+		
+		mov Middleblockboolean,ah
+		mov Middleblockbooleaninverted,al
+		
+middleinvertjmp: call DRAWMIDDLEBLOCKS
+
+ret
+BlinkMiddleandInvert endp
 
 ;---------------------------------------------------------------------------
 ;--------------------DRAW RECTANGLE OUTLINE---------------------------------
@@ -982,6 +1184,9 @@ StatusBar endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 GameName proc far
+
+	call ClearALLScreen 
+	
 	mov cx,223
 	mov dx,140
 	mov al,9
@@ -1055,7 +1260,7 @@ GameName proc far
 		
 	mov cx,244
 	mov dx,226
-	mov al,0
+	mov al,Clearcolor
 	mov si,8
 	Bloop:
 		mov di,81
@@ -1440,19 +1645,31 @@ loopBulletcollision:push cx
 											 mov word ptr[si],0
 											 mov word ptr[di],0
 											 add CounterFreeze1,1
-											  mov BooleanFreeze1,0
+											 mov BooleanFreeze1,0
 											 cmp CounterFreeze1,5
 											 jnz temp1beginnextcollisionchecking
 										
-											 mov BooleanFreeze1,100;shooter2 should be freezed for 5sec 
+											 mov BooleanFreeze1,maxfreezetime;shooter2 should be freezed for 5sec 
 											 mov CounterFreeze1,0
 											 jmp beginnextcollisionchecking
 											 
 					temp1beginnextcollisionchecking: jmp beginnextcollisionchecking		
 											 
-											 
+					
+					
 			        checkbullblock1:	mov tempbullety,si
 										mov tempbulletx,di
+										
+									    ;check for blocks in the middle of the screen
+										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx1,MiddleBlocksy1,Middleblockboolean
+										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx3,MiddleBlocksy3,Middleblockboolean
+										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx5,MiddleBlocksy5,Middleblockboolean
+										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx2,MiddleBlocksy2,Middleblockbooleaninverted
+										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx4,MiddleBlocksy4,Middleblockbooleaninverted
+										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx6,MiddleBlocksy6,Middleblockbooleaninverted
+										
+										
+										;check for the blocks that add score
 										BlockChecker1 tempbulletx, tempbullety, BLOCK13X,BLOCK13Y,TOBEDRAWNABLOCK+13
 										BlockChecker1 tempbulletx, tempbullety, BLOCK14X,BLOCK14Y,TOBEDRAWNABLOCK+14
 										BlockChecker1 tempbulletx, tempbullety, BLOCK15X,BLOCK15Y,TOBEDRAWNABLOCK+15
@@ -1527,11 +1744,11 @@ loopBulletcollision2:push cx
 											 mov word ptr[si],0
 											 mov word ptr[di],0
 											 add CounterFreeze2,1
-											  mov BooleanFreeze2,0
+											 mov BooleanFreeze2,0
 											 cmp CounterFreeze2,5
 											 jnz temp2beginnextcollisionchecking2
 										
-											 mov BooleanFreeze2,100;shooter1 should be freezed for 5sec 
+											 mov BooleanFreeze2,maxfreezetime;shooter1 should be freezed for 5sec 
 											 mov CounterFreeze2,0
 											 jmp beginnextcollisionchecking2  
 
@@ -1541,6 +1758,17 @@ loopBulletcollision2:push cx
 			        checkbullblock12:
 									 mov tempbullety,si
 									 mov tempbulletx,di
+									 
+									 ;check for the blocks in the middle
+									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx1,MiddleBlocksy1,Middleblockboolean
+									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx3,MiddleBlocksy3,Middleblockboolean
+									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx5,MiddleBlocksy5,Middleblockboolean
+									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx2,MiddleBlocksy2,Middleblockbooleaninverted
+									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx4,MiddleBlocksy4,Middleblockbooleaninverted
+									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx6,MiddleBlocksy6,Middleblockbooleaninverted
+									 
+									
+									;check for the blocks that add score
 									 BlockChecker2 tempbulletx, tempbullety, BLOCK1X ,BLOCK1Y ,TOBEDRAWNABLOCK+1
 									 BlockChecker2 tempbulletx, tempbullety, BLOCK2X ,BLOCK2Y ,TOBEDRAWNABLOCK+2
 									 BlockChecker2 tempbulletx, tempbullety, BLOCK3X ,BLOCK3Y ,TOBEDRAWNABLOCK+3
@@ -1879,7 +2107,7 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 						 
 		cmp BooleanFreeze1,0 ;checking if  shooter1 is freezed
-          jz StartAdj2	
+        jz StartAdj2	
         dec BooleanFreeze1
 		jmp exitadjust1	
 		
@@ -1927,10 +2155,10 @@ ADJUST_POSITION2 ENDP
 ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 						 
-		cmp BooleanFreeze2,0 ;checking if  shooter1 is freezed
-          jz StartAdj1	
-           dec BooleanFreeze2
-	      jmp exitadjust2
+	cmp BooleanFreeze2,0 ;checking if  shooter1 is freezed
+    jz StartAdj1	
+    dec BooleanFreeze2
+	jmp exitadjust2
 		  
 				;CHECKING WHETHER USER HAS PRESSED A KEY
 	StartAdj1:	MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
@@ -2057,6 +2285,11 @@ MOV TOBEDRAWNABLOCK+24,1
 
 MOV booleantime3 , 0
 
+MOV CounterFreeze1 , 0
+MOV BooleanFreeze1 , 0
+MOV CounterFreeze2 , 0
+MOV BooleanFreeze2 , 0
+
 mov Player1Score,0
 mov Player2Score,0
 
@@ -2115,7 +2348,6 @@ playingmode:  ;/////////////if f2 is pressed
 			  CALL DRAWRIGHTWALLS ;draw blocks
 			  CALL DRAWLEFTWALLS  
 				
-				
 		maingameloop:
 		
 				
@@ -2146,6 +2378,8 @@ playingmode:  ;/////////////if f2 is pressed
 				call BulletAnimation2
                 call BulletCollision2
 				call drawbullet2
+				
+				call BlinkMiddleandInvert ;inverts the middle blocks every second as well as draw them 
 				
 				call StatusBar
 				
