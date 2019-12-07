@@ -202,7 +202,7 @@ DELETEABLOCK MACRO BLOCKX, BLOCKY
 	@@DRAWW:
 		MOV CX,BLOCKX	;DRAWING PIXELS HORIZONTALLY
 		MOV DX,BLOCKY	
-		MOV AL,0	    ;IN BLACK COLOR
+		MOV AL,Clearcolor	    ;Clear color
 		MOV AH,0CH
 	@@BACKK:
 		INT 10H
@@ -646,7 +646,7 @@ CLRRECTOUTLINE1 PROC  		;PROCEDURE THAT DRAWS A RECTANGLE GUIDED BY THE START PO
 							;DRAWING PIXELS HORIZONTALLY
 		MOV CX,SHOOTER1X	;FILLING INITIAL VALUE FOR X
 		MOV DX,SHOOTER1Y	;FILLING INITIAL VALUE FOR Y
-		MOV AL,0			;  ....
+		MOV AL,Clearcolor			;  ....
 		MOV AH,0CH
 	BACK6:
 		INT 10H
@@ -717,7 +717,7 @@ CLRINNERRECT1 PROC
 	DRAW7:
 		MOV CX,SHOOTER1X	;DRAWING PIXELS HORIZONTALLY
 		MOV DX,SHOOTER1Y	;  ....
-		MOV AL,0	;  ....
+		MOV AL,Clearcolor	;  ....
 		MOV AH,0CH
 	BACK7:
 		INT 10H
@@ -792,7 +792,7 @@ CLRSHOOTER1TIP PROC
 	
 		MOV CX,SHOOTER1X	;DRAWING PIXELS HORIZONTALLY
 		MOV DX,SHOOTER1Y	;  ....
-		MOV AL,0			;  ....
+		MOV AL,Clearcolor			;  ....
 		MOV AH,0CH
 	BACK8:
 		INT 10H
@@ -859,7 +859,7 @@ CLRRECTOUTLINE2 PROC
 							;DRAWING PIXELS HORIZONTALLY
 		MOV CX,SHOOTER2X	;FILLING INITIAL VALUE FOR X
 		MOV DX,SHOOTER2Y	;FILLING INITIAL VALUE FOR Y
-		MOV AL,0			;  ....
+		MOV AL,Clearcolor			;  ....
 		MOV AH,0CH
 	BACK9:
 		INT 10H
@@ -927,7 +927,7 @@ CLRINNERRECT2 PROC
 	DRAW10:
 		MOV CX,SHOOTER2X	;DRAWING PIXELS HORIZONTALLY
 		MOV DX,SHOOTER2Y	;  ....
-		MOV AL,0	;  ....
+		MOV AL,Clearcolor	;  ....
 		MOV AH,0CH
 	BACK10:
 		INT 10H
@@ -999,7 +999,7 @@ CLRSHOOTER2TIP PROC
 	
 		MOV CX,SHOOTER2X	;DRAWING PIXELS HORIZONTALLY
 		MOV DX,SHOOTER2Y	;  ....
-		MOV AL,0			;  ....
+		MOV AL,Clearcolor			;  ....
 		MOV AH,0CH
 	BACK11:
 		INT 10H
@@ -1142,6 +1142,35 @@ StatusBar proc far
 	add dl,'0'
 	mov ah,2
 	int 21h
+		 
+	mov ah,2     ;frozen status print for the left shooter
+	mov dx,2625h
+	mov bx,0
+	int 10h
+	mov ah,9
+	mov bh,0
+	mov al,' '
+	mov cx,1
+	mov bl,04h
+	cmp BooleanFreeze2,0
+	jz nofr
+	mov al,'F'
+nofr:int 10h
+
+	mov ah,2     ;frozen status print for the right shooter
+	mov dx,2655h
+	mov bx,0
+	int 10h
+	mov ah,9
+	mov bh,0
+	mov al,' '
+	mov cx,1
+	mov bl,01h
+	cmp BooleanFreeze1,0
+	jz nofr2
+	mov al,'F'
+nofr2:int 10h
+		
 		 
 	mov ah,2   ;move cursor
 	mov dx,2670h
@@ -1645,11 +1674,10 @@ loopBulletcollision:push cx
 											 mov word ptr[si],0
 											 mov word ptr[di],0
 											 add CounterFreeze1,1
-											 mov BooleanFreeze1,0
 											 cmp CounterFreeze1,5
 											 jnz temp1beginnextcollisionchecking
 										
-											 mov BooleanFreeze1,maxfreezetime;shooter2 should be freezed for 5sec 
+											 mov BooleanFreeze1,maxfreezetime;shooter2 should be freezed for 2 sec 
 											 mov CounterFreeze1,0
 											 jmp beginnextcollisionchecking
 											 
@@ -1744,7 +1772,6 @@ loopBulletcollision2:push cx
 											 mov word ptr[si],0
 											 mov word ptr[di],0
 											 add CounterFreeze2,1
-											 mov BooleanFreeze2,0
 											 cmp CounterFreeze2,5
 											 jnz temp2beginnextcollisionchecking2
 										
