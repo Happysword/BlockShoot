@@ -431,6 +431,12 @@ Player2Score db 0
 frameMes1 db 'Press F1 To Enter Chat Mode',10,13,'$'
 frameMes2 db 'Press F2 To Start A New Game',10,'$'
 frameMes3 db 'Press ESC to Exit The Game',10,'$'
+Usernamemessage db 'Please Enter your Name :','$'
+Usernamecontinuemessage db 'Press Enter to Continue','$'
+UserNameDATA db 20				;Must stay in this order
+UserNameDataNumber db ?            ;Must stay in this order
+UserNameDatastring db 20 dup('$')    ;Must stay in this order
+
 notbarmess db 128 dup('_'),10,'$' 
 notbarmess2 db 128 dup('-'),10,'$' 
 BulletNumber equ 10
@@ -2073,6 +2079,16 @@ notificationBar:mov ah,2     ;moving the cursor to the below the frame messages 
                 mov ah,9     ;displaying the main page(frame)
                 mov dx,offset notbarmess
                 int 21h
+				
+				mov ah,2     ;moving the cursor to Print Username
+                mov dx,2602h
+				mov bx,0
+                int 10h
+
+                mov ah,9     ;print Username
+                mov dx,offset UserNameDatastring
+                int 21h
+				
 
 ret
 MainMenu endp
@@ -2523,6 +2539,47 @@ InitializeGame endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Usernamescreen proc far
+
+			  mov ax, 4f02h
+			  mov bx, 105h
+			  int 10h ;clear by calling graphics mode
+			  
+			  mov ah,2     ;moving the cursor to the center of the screen
+              mov dx,1832h
+			  mov bx,0
+              int 10h
+
+              mov ah,9     ;displaying the enter your name message
+              mov dx,offset Usernamemessage
+              int 21h
+				
+				
+			  mov ah,2     ;moving the cursor down the screen
+              mov dx,2032h
+			  mov bx,0
+              int 10h
+
+              mov ah,9     ;displaying the press enter to continue
+              mov dx,offset Usernamecontinuemessage
+              int 21h
+			  
+			  
+			  mov ah,2     ;moving the cursor up the screen
+              mov dx,1A39H
+			  mov bx,0
+              int 10h
+			  
+						   ;Reading the Username
+			  mov bx,0
+			  mov ah,0AH 
+			  mov dx,offset UserNameDATA 
+			  int 21h 
+ret
+Usernamescreen endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 Main proc far
 	mov ax,@data
 	mov ds,ax ; copy data segment
@@ -2532,6 +2589,8 @@ Main proc far
 	int 10h ;graphical mode interrupt
 	
 	Call GameName
+	
+	Call Usernamescreen  ;user name screen 
 	
 Mainmenujump:	CALL MainMenu
 				
