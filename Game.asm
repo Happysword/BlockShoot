@@ -427,6 +427,8 @@ booleantime3 db 0
 
 Player1Score db 0
 Player2Score db 0
+booleanisbigger1 db 0
+booleanisbigger2 db 0
 
 frameMes1 db 'Press F1 To Enter Chat Mode',10,13,'$'
 frameMes2 db 'Press F2 To Start A New Game',10,'$'
@@ -862,7 +864,7 @@ DRAWINGSHOOTER1TIP ENDP
 ;---------------------------------------------------------------------------
 CLRSHOOTER1TIP PROC
 	
-	ADD SHOOTER1X,30
+	ADD SHOOTER1X,30															
 	CMP SHOOTER1BIGGER,1
 	JE BIGGER10
 	ADD SHOOTER1Y,40
@@ -1201,9 +1203,12 @@ DRAWSHOOTER1 proc far
 	jz Adjustsize1 
 	JMP continuedrawshooter1
 Adjustsize1:
-	CALL CLRSHOOTER1TIP
-	MOV SHOOTER2BIGGER,1
 	
+	cmp booleanisbigger1,1
+	jz continuedrawshooter1
+	CALL CLRSHOOTER2TIP
+	MOV SHOOTER2BIGGER,1
+	mov booleanisbigger1,1
 	
 continuedrawshooter1:	
 	CALL DRAWRECTOUTLINE1
@@ -1222,8 +1227,11 @@ DRAWSHOOTER2 proc far
 	jz Adjustsize2
 	JMP continuedrawshooter2
 Adjustsize2:
-	CALL CLRSHOOTER2TIP
+	cmp booleanisbigger2,1
+	jz continuedrawshooter2
+	CALL CLRSHOOTER1TIP
 	MOV SHOOTER1BIGGER,1
+	mov booleanisbigger2,1
 	
 
 continuedrawshooter2:	
@@ -1314,7 +1322,7 @@ StatusBar proc far
 	int 21h
 	
 	mov ah,2   ;move cursor
-	mov dx,2605h
+	mov dx,2606h
 	mov bx,0
 	int 10h
 	mov ah,9
@@ -1330,7 +1338,7 @@ StatusBar proc far
 	add dl,'0'
 	mov ah,2
 	int 21h
-	mov dl,ch ;printing scoreplayer1
+	mov dl,ch ;printing scoreplayer1 
 	add dl,'0'
 	mov ah,2
 	int 21h
@@ -2534,6 +2542,9 @@ mov BooleanFreeze1,0
 mov CounterFreeze2,0
 mov BooleanFreeze2,0
 
+mov booleanisbigger1 , 0
+mov booleanisbigger2 , 0
+
 ret
 InitializeGame endp
 
@@ -2578,6 +2589,18 @@ Usernamescreen proc far
 ret
 Usernamescreen endp
 
+Usernamescreenchecker proc far
+
+startagain : Call Usernamescreen
+
+cmp UserNameDatastring,63
+jl startagain
+cmp UserNameDatastring,122
+jg startagain
+
+ret
+Usernamescreenchecker endp
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Main proc far
@@ -2590,7 +2613,8 @@ Main proc far
 	
 	Call GameName
 	
-	Call Usernamescreen  ;user name screen 
+rightusername:Call Usernamescreenchecker  ;user name screen 
+				
 	
 Mainmenujump:	CALL MainMenu
 				
@@ -2682,7 +2706,7 @@ playingmode:  ;/////////////if f2 is pressed
             mov ah,7    ;clear key from buffer
 			int 21h
 			cmp al,1bh
-            jz tempmainmenujmp
+            jz ScoreScreenjmp
 			
 					 
      cont:  jmp maingameloop              
