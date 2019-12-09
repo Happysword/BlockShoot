@@ -1,6 +1,78 @@
 
 
 ;;;;;;;MACROS;;;;;;;;;;;
+;DRAW A GLUE MACRO
+DRAWAGLUE MACRO GLUEX,GLUEY
+	LOCAL @@DRAWG,@@BACKG  ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
+	MOV BX,00
+	ADD BX,GLUEY
+	ADD BX,90   		;PUTTING IN BX GLUE MAX LENGTH
+	@@DRAWG:
+		MOV CX,GLUEX	;DRAWING PIXELS HORIZONTALLY
+		MOV DX,GLUEY	
+		MOV AL,07	    ;CHOOSING WHITE COLOR
+		MOV AH,0CH
+	@@BACKG:
+		INT 10H
+		INC CX
+		ADD GLUEX,07  ;GLUE MAX WIDTH
+		CMP CX,GLUEX
+		PUSHF			;ADJUSTING FLAGS
+		SUB GLUEX,07  
+		POPF
+		JNZ @@BACKG   ;TILL HERE
+		
+	INC GLUEY			
+	CMP GLUEY,BX
+	JNE @@DRAWG 		;KEEP DRAWING HORIZONTALLY
+	SUB GLUEY,90  
+
+ENDM
+
+;DELETE A GLUE MACRO
+DELETEAGLUE MACRO GLUEX, GLUEY
+    LOCAL @@DRAWWG, @@BACKKG         ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
+	MOV BX,00
+	ADD BX,GLUEY
+	ADD BX,90   		;PUTTING IN BX GLUE MAX LENGTH
+	@@DRAWWG:
+		MOV CX,GLUEX	;DRAWING PIXELS HORIZONTALLY
+		MOV DX,GLUEY	
+		MOV AL,00	    ;IN BLACK COLOR
+		MOV AH,0CH
+	@@BACKKG:
+		INT 10H
+		INC CX
+		ADD GLUEX,07  ;GLUE MAX WIDTH
+		CMP CX,GLUEX
+		PUSHF			;ADJUSTING FLAGS
+		SUB GLUEX,07  
+		POPF
+		JNZ @@BACKKG  
+		
+	INC GLUEY		
+	CMP GLUEY,BX
+	JNE @@DRAWWG  		;KEEP DRAWING HORIZONTALLY
+	SUB GLUEY,90
+	       
+	ENDM
+
+	;NACRO TO DRAW ALL GLUES NEEDED WE WILL CALL IT AFTER EVERY BULLET        
+
+DRAWGLUES MACRO
+    CALL DRAWGLUE12
+    CALL DRAWGLUE34
+    CALL DRAWGLUE56
+    CALL DRAWGLUE78
+    CALL DRAWGLUE910
+    CALL DRAWGLUE1112
+    CALL DRAWGLUE1314
+	CALL DRAWGLUE1516
+    CALL DRAWGLUE1718
+    CALL DRAWGLUE1920
+    CALL DRAWGLUE2122
+    CALL DRAWGLUE2324
+ ENDM
 
 
 ;CHECK IF A BULLET HIT THE BLOCK FOR THE RIGTH BLOCKS
@@ -34,6 +106,37 @@ DELETEABLOCK BLOCKXX,BLOCKYY
 MOV BLOCKDRAWNNUMBER,0
 
 EXITBLOCKCHECKER1:
+ENDM
+
+GlueChecker1  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
+local EXITGlueCHECKER1
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,1                        
+JNZ EXITGlueCHECKER1 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME X 
+JB EXITGlueCHECKER1                          
+                                              
+MOV BX,BLOCKYY    
+sub bx,5                            
+cmp word ptr [si],BX                          
+JB EXITGlueCHECKER1                          
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight+5                            
+CMP word ptr [si],BX                          
+JA EXITGlueCHECKER1
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+MOV BLOCKDRAWNNUMBER,2
+DELETEAGLUE BLOCKXX , BLOCKYY
+
+EXITGlueCHECKER1:
 ENDM
 
 BlockCheckermiddle1  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
@@ -102,6 +205,37 @@ DELETEABLOCK BLOCKXX,BLOCKYY
 MOV BLOCKDRAWNNUMBER,0
 
 EXITBLOCKCHECKER2:
+ENDM
+
+GlueChecker2  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
+local EXITGlueCHECKER2
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,1                       
+JNZ EXITGlueCHECKER2 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME X 
+JG EXITGlueCHECKER2                          
+                                              
+MOV BX,BLOCKYY     
+sub bx,5                           
+cmp word ptr [si],BX                          
+JB EXITGlueCHECKER2                         
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight+5                            
+CMP word ptr [si],BX                          
+JA EXITGlueCHECKER2
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+MOV BLOCKDRAWNNUMBER,2
+DELETEAGLUE BLOCKXX , BLOCKYY
+
+EXITGlueCHECKER2:
 ENDM
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -269,6 +403,50 @@ BlocksLeftColor1  equ 11
 BlocksRightColor1 equ 12
 BlocksLeftColor2  equ 1
 BlocksRightColor2 equ 4
+
+;CHECK IF GLUE IS DRAWN ZERO BY DEFAULT
+;IF IT'S DRAWN I MADE IT TO CHANGE TO ONE
+ISGLUEDRAWN DB 0,12 DUP(0)    
+
+;DATA FOR DRAWING GLUE
+ 
+;GLUE FOR BLOCKS 1,2 FROM RIGHT
+GLUE12X DW 88 
+GLUE12Y DW 20
+
+GLUE34X DW 88
+GLUE34Y DW 115
+
+GLUE56X DW 88
+GLUE56Y DW 210
+
+GLUE78X DW 88
+GLUE78Y DW 305
+
+GLUE910X DW 88
+GLUE910Y DW 400
+
+GLUE1112X DW 88
+GLUE1112Y DW 495
+
+GLUE1314X DW 929 
+GLUE1314Y DW 20
+
+GLUE1516X DW 929
+GLUE1516Y DW 115
+
+GLUE1718X DW 929
+GLUE1718Y DW 210
+
+GLUE1920X DW 929
+GLUE1920Y DW 305
+
+GLUE2122X DW 929
+GLUE2122Y DW 400
+
+GLUE2324X DW 929
+GLUE2324Y DW 495
+
 
 ;DATA FOR DRAWING Left WALLS
 ;Block1
@@ -453,6 +631,10 @@ maxfreezetime equ 100
 
 Clearcolor db 0h
 
+halfTheScreenWidth equ 512
+ThescreenheightbeforeTheNotbar equ 608
+screenWidth equ 1024
+
 .code
 
 ;procedure to clear screen
@@ -552,6 +734,198 @@ DELETELEFTWALLS PROC
        
     RET
 DELETELEFTWALLS ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;PROCEDURES TO DRAW A GLUE
+
+DRAWGLUE12 PROC
+	  cmp ISGLUEDRAWN+1,2
+	  jz END12
+      CMP TOBEDRAWNABLOCK+13,0
+      JZ L1
+      JNZ END12
+      L1: CMP TOBEDRAWNABLOCK+14,0
+      JZ L2
+      JNZ END12
+   L2: DRAWAGLUE GLUE12X,GLUE12Y 
+       MOV ISGLUEDRAWN+1,1
+  END12: 
+  RET
+    DRAWGLUE12 ENDP  
+
+
+DRAWGLUE34 PROC
+	  cmp ISGLUEDRAWN+2,2
+	  jz END34
+        CMP TOBEDRAWNABLOCK+15,0
+      JZ L3
+      JNZ END34
+      L3: CMP TOBEDRAWNABLOCK+16,0
+      JZ L4
+      JNZ END34
+    
+   L4: DRAWAGLUE GLUE34X,GLUE34Y 
+       MOV ISGLUEDRAWN+2,1
+ END34:   RET
+    DRAWGLUE34 ENDP  
+
+
+
+DRAWGLUE56 PROC
+	  cmp ISGLUEDRAWN+3,2
+	  jz END56
+        CMP TOBEDRAWNABLOCK+17,0
+      JZ L5
+      JNZ END56
+      L5: CMP TOBEDRAWNABLOCK+18,0
+      JZ L6
+      JNZ END56
+    
+   L6:  DRAWAGLUE GLUE56X,GLUE56Y
+   MOV ISGLUEDRAWN+3,1
+   END56: RET
+    DRAWGLUE56 ENDP  
+
+                      			  
+DRAWGLUE78 PROC
+	  cmp ISGLUEDRAWN+4,2
+	  jz END78
+        CMP TOBEDRAWNABLOCK+19,0
+      JZ L7
+      JNZ END78
+      L7: CMP TOBEDRAWNABLOCK+20,0
+      JZ L8
+      JNZ END78
+    
+   L8: DRAWAGLUE GLUE78X,GLUE78Y
+   MOV ISGLUEDRAWN+4,1
+   END78:  RET
+    DRAWGLUE78 ENDP  
+
+DRAWGLUE910 PROC
+	  cmp ISGLUEDRAWN+5,2
+	  jz END910
+       CMP TOBEDRAWNABLOCK+21,0
+      JZ L9
+      JNZ END910
+      L9: CMP TOBEDRAWNABLOCK+22,0
+      JZ L10
+      JNZ END910
+    
+   L10:DRAWAGLUE GLUE910X,GLUE910Y
+   MOV ISGLUEDRAWN+5,1
+  END910:  RET
+    DRAWGLUE910 ENDP 
+
+
+DRAWGLUE1112 PROC
+	  cmp ISGLUEDRAWN+6,2
+	  jz END1112
+      CMP TOBEDRAWNABLOCK+23,0
+      JZ L11
+      JNZ END1112
+      L11: CMP TOBEDRAWNABLOCK+24,0
+      JZ L12
+      JNZ END1112
+    
+   L12: DRAWAGLUE GLUE1112X,GLUE1112Y
+   MOV ISGLUEDRAWN+6,1
+    END1112: RET
+    DRAWGLUE1112 ENDP
+
+   
+DRAWGLUE1314 PROC
+	  cmp ISGLUEDRAWN+7,2
+	  jz END1314
+      CMP TOBEDRAWNABLOCK+1,0
+      JZ L13
+      JNZ END1314
+      L13: CMP TOBEDRAWNABLOCK+2,0
+      JZ L14
+      JNZ END1314
+    
+   L14: DRAWAGLUE GLUE1314X,GLUE1314Y 
+   MOV ISGLUEDRAWN+7,1
+    END1314: RET
+    DRAWGLUE1314 ENDP
+
+DRAWGLUE1516 PROC
+	  cmp ISGLUEDRAWN+8,2
+	  jz END1516
+       CMP TOBEDRAWNABLOCK+3,0
+      JZ L15
+      JNZ END1516
+      L15: CMP TOBEDRAWNABLOCK+4,0
+      JZ L16
+      JNZ END1516
+    
+   L16:DRAWAGLUE GLUE1516X,GLUE1516Y 
+   MOV ISGLUEDRAWN+8,1
+   END1516: RET
+    DRAWGLUE1516 ENDP
+
+DRAWGLUE1718 PROC
+	  cmp ISGLUEDRAWN+9,2
+	  jz END1718
+       CMP TOBEDRAWNABLOCK+5,0
+      JZ L17
+      JNZ END1718
+      L17: CMP TOBEDRAWNABLOCK+6,0
+      JZ L18
+      JNZ END1718
+    
+   L18: DRAWAGLUE GLUE1718X,GLUE1718Y
+   MOV ISGLUEDRAWN+9,1
+   END1718: RET
+    DRAWGLUE1718 ENDP    
+
+DRAWGLUE1920 PROC
+	  cmp ISGLUEDRAWN+10,2
+	  jz END1920
+        CMP TOBEDRAWNABLOCK+7,0
+      JZ L19
+      JNZ END1920
+      L19: CMP TOBEDRAWNABLOCK+8,0
+      JZ L20
+      JNZ END1920
+    
+   L20: DRAWAGLUE GLUE1920X,GLUE1920Y
+   MOV ISGLUEDRAWN+10,1
+  END1920:  RET
+    DRAWGLUE1920 ENDP
+
+
+DRAWGLUE2122 PROC
+	  cmp ISGLUEDRAWN+11,2
+	  jz END2122
+        CMP TOBEDRAWNABLOCK+9,0
+      JZ L21
+      JNZ END2122
+      L21: CMP TOBEDRAWNABLOCK+10,0
+      JZ L22
+      JNZ END2122
+    
+   L22:DRAWAGLUE GLUE2122X,GLUE2122Y
+   MOV ISGLUEDRAWN+11,1
+   END2122: RET
+    DRAWGLUE2122 ENDP
+
+DRAWGLUE2324 PROC
+	  cmp ISGLUEDRAWN+12,2
+	  jz END2324
+        CMP TOBEDRAWNABLOCK+11,0
+      JZ L23
+      JNZ END2324
+      L23: CMP TOBEDRAWNABLOCK+12,0
+      JZ L24
+      JNZ END2324
+    
+   L24:DRAWAGLUE GLUE2324X,GLUE2324Y 
+   MOV ISGLUEDRAWN+12,1
+    END2324: RET
+    DRAWGLUE2324 ENDP
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1899,6 +2273,13 @@ loopBulletcollision:push cx
 										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx4,MiddleBlocksy4,Middleblockbooleaninverted
 										BlockCheckermiddle1 tempbulletx, tempbullety, MiddleBlocksx6,MiddleBlocksy6,Middleblockbooleaninverted
 										
+										;check for glues
+										GlueChecker1 tempbulletx, tempbullety, GLUE1314X, GLUE1314Y, ISGLUEDRAWN+7 
+										GlueChecker1 tempbulletx, tempbullety, GLUE1516X, GLUE1516Y, ISGLUEDRAWN+8
+										GlueChecker1 tempbulletx, tempbullety, GLUE1718X, GLUE1718Y, ISGLUEDRAWN+9
+										GlueChecker1 tempbulletx, tempbullety, GLUE1920X, GLUE1920Y, ISGLUEDRAWN+10
+										GlueChecker1 tempbulletx, tempbullety, GLUE2122X, GLUE2122Y, ISGLUEDRAWN+11
+										GlueChecker1 tempbulletx, tempbullety, GLUE2324X, GLUE2324Y, ISGLUEDRAWN+12
 										
 										;check for the blocks that add score
 										BlockChecker1 tempbulletx, tempbullety, BLOCK13X,BLOCK13Y,TOBEDRAWNABLOCK+13
@@ -2000,6 +2381,14 @@ loopBulletcollision2:push cx
 									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx4,MiddleBlocksy4,Middleblockbooleaninverted
 									 BlockCheckermiddle2 tempbulletx, tempbullety, MiddleBlocksx6,MiddleBlocksy6,Middleblockbooleaninverted
 									 
+									 ;check for glues
+									 GlueChecker2 tempbulletx, tempbullety, GLUE12X  , GLUE12Y  , ISGLUEDRAWN+1
+									 GlueChecker2 tempbulletx, tempbullety, GLUE34X  , GLUE34Y  , ISGLUEDRAWN+2
+									 GlueChecker2 tempbulletx, tempbullety, GLUE56X  , GLUE56Y  , ISGLUEDRAWN+3
+									 GlueChecker2 tempbulletx, tempbullety, GLUE78X  , GLUE78Y  , ISGLUEDRAWN+4
+									 GlueChecker2 tempbulletx, tempbullety, GLUE910X , GLUE910Y , ISGLUEDRAWN+5
+									 GlueChecker2 tempbulletx, tempbullety, GLUE1112X, GLUE1112Y, ISGLUEDRAWN+6
+									 
 									
 									;check for the blocks that add score
 									 BlockChecker2 tempbulletx, tempbullety, BLOCK1X ,BLOCK1Y ,TOBEDRAWNABLOCK+1
@@ -2051,7 +2440,39 @@ MainMenu proc far
 			  mov ax, 4f02h
 			  mov bx, 105h
 			  int 10h ;clear by callibg graphics mode
-dispgameframe:mov ah,2     ;moving the cursor to the center of the screen
+dispgameframe:
+              mov cx,0             ;first section of the screen
+			  mov dx,0
+			  mov al,4h
+			  mov ah,0ch
+			  colouringscreen1Outerloop: mov cx,0
+			            colouringscreen1Innerloop: int 10h
+													 inc cx
+													 cmp cx,halfTheScreenWidth
+													 jnz colouringscreen1Innerloop
+													 inc dx
+													 cmp dx,ThescreenheightbeforeTheNotbar 
+													 jnz colouringscreen1Outerloop
+													 
+													 
+			  mov cx,halfTheScreenWidth             ;second section of the screen
+			  mov dx,0
+			  mov al,1h
+			  mov ah,0ch
+			  colouringscreen2Outerloop: mov cx,halfTheScreenWidth
+			            colouringscreen2Innerloop: int 10h
+													 inc cx
+													 cmp cx,screenWidth
+													 jnz colouringscreen2Innerloop
+													 inc dx
+													 cmp dx,ThescreenheightbeforeTheNotbar 
+													 jnz colouringscreen2Outerloop									 
+													 
+													 
+			  
+			  
+
+              mov ah,2     ;moving the cursor to the center of the screen
               mov dx,0A32h
 			  mov bx,0
               int 10h
@@ -2100,6 +2521,7 @@ notificationBar:mov ah,2     ;moving the cursor to the below the frame messages 
 
 ret
 MainMenu endp
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2683,6 +3105,7 @@ playingmode:  ;/////////////if f2 is pressed
 				call drawbullet2
 				
 				call BlinkMiddleandInvert ;inverts the middle blocks every second as well as draw them 
+				DRAWGLUES                 ;draws the glue blocker
 				
 				call StatusBar
 				
