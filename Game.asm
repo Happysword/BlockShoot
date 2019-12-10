@@ -611,11 +611,16 @@ booleanisbigger2 db 0
 frameMes1 db 'Press F1 To Enter Chat Mode',10,13,'$'
 frameMes2 db 'Press F2 To Start A New Game',10,'$'
 frameMes3 db 'Press ESC to Exit The Game',10,'$'
-Usernamemessage db 'Please Enter your Name :','$'
+Usernamemessage db 'Please Enter your Name Player 1 :','$'
+Usernamemessage2 db 'Please Enter your Name Player 2 :','$'
 Usernamecontinuemessage db 'Press Enter to Continue','$'
 UserNameDATA db 20				;Must stay in this order
 UserNameDataNumber db ?            ;Must stay in this order
 UserNameDatastring db 20 dup('$')    ;Must stay in this order
+
+UserNameDATA2 db 20				;Must stay in this order
+UserNameDataNumber2 db ?            ;Must stay in this order
+UserNameDatastring2 db 20 dup('$')
 
 notbarmess db 128 dup('_'),10,'$' 
 notbarmess2 db 128 dup('-'),10,'$' 
@@ -3011,11 +3016,64 @@ Usernamescreen proc far
 ret
 Usernamescreen endp
 
+
+Usernamescreen2 proc far
+
+			  mov ax, 4f02h
+			  mov bx, 105h
+			  int 10h ;clear by calling graphics mode
+			  
+			  mov ah,2     ;moving the cursor to the center of the screen
+              mov dx,1832h
+			  mov bx,0
+              int 10h
+
+              mov ah,9     ;displaying the enter your name message
+              mov dx,offset Usernamemessage2
+              int 21h
+				
+				
+			  mov ah,2     ;moving the cursor down the screen
+              mov dx,2032h
+			  mov bx,0
+              int 10h
+
+              mov ah,9     ;displaying the press enter to continue
+              mov dx,offset Usernamecontinuemessage
+              int 21h
+			  
+			  
+			  mov ah,2     ;moving the cursor up the screen
+              mov dx,1A39H
+			  mov bx,0
+              int 10h
+			  
+						   ;Reading the Username
+			  mov bx,0
+			  mov ah,0AH 
+			  mov dx,offset UserNameDATA2
+			  int 21h 
+ret
+Usernamescreen2 endp
+
 Usernamescreenchecker proc far
 
 startagain : Call Usernamescreen
 
-cmp UserNameDatastring,63
+cmp UserNameDatastring,91
+jz startagain
+cmp UserNameDatastring,92
+jz startagain
+cmp UserNameDatastring,93
+jz startagain
+cmp UserNameDatastring,94
+jz startagain
+cmp UserNameDatastring,95
+jz startagain
+cmp UserNameDatastring,96
+jz startagain
+
+cmp UserNameDatastring,65
 jl startagain
 cmp UserNameDatastring,122
 jg startagain
@@ -3023,6 +3081,70 @@ jg startagain
 ret
 Usernamescreenchecker endp
 
+Usernamescreenchecker2 proc far
+
+startagain2 : Call Usernamescreen2
+
+cmp UserNameDatastring2,91
+jz startagain2
+cmp UserNameDatastring2,92
+jz startagain2
+cmp UserNameDatastring2,93
+jz startagain2
+cmp UserNameDatastring2,94
+jz startagain2
+cmp UserNameDatastring2,95
+jz startagain2
+cmp UserNameDatastring2,96
+jz startagain2
+
+cmp UserNameDatastring2,65
+jl startagain2
+cmp UserNameDatastring2,122
+jg startagain2
+
+ret
+Usernamescreenchecker2 endp
+
+
+chattingMenu proc far
+
+	mov ax, 4f02h
+	mov bx, 105h
+	int 10h ;graphical mode interrupt
+	
+	mov ah,2     ;moving the cursor to the below the frame messages to create the notificationbar
+    mov dx,1800h
+	mov bx,0
+    int 10h
+
+    mov ah,9     ;displaying the main page(frame)
+    mov dx,offset notbarmess
+    int 21h
+	
+	mov ah,2     ;moving the cursor to the below the frame messages to create the notificationbar
+    mov dx,0201h
+	mov bx,0
+    int 10h
+
+    mov ah,9     ;displaying the main page(frame)
+    mov dx,offset UserNameDatastring
+    int 21h
+	
+	mov bx,0
+	mov ah,2     ;moving the cursor to the below the frame messages to create the notificationbar
+    mov dx,1A01h
+	mov bx,0
+    int 10h
+
+    mov ah,9     ;displaying the main page(frame)
+    mov dx,offset UserNameDatastring2
+    int 21h
+	
+	
+
+ret
+chattingMenu endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Main proc far
@@ -3036,6 +3158,7 @@ Main proc far
 	Call GameName
 	
 rightusername:Call Usernamescreenchecker  ;user name screen 
+				call Usernamescreenchecker2
 				
 	
 Mainmenujump:	CALL MainMenu
@@ -3052,8 +3175,11 @@ WaitingForKeyPressed:mov ah,0
                      jmp WaitingForKeyPressed
 					 
       
-chattingmode: ;/////////////if f1 is pressed
-              
+chattingmode:call chattingMenu ;/////////////if f1 is pressed
+             mov ah,0
+             int 16h
+             cmp al,1bh
+             jz Mainmenujump 
 
 
 
