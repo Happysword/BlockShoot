@@ -640,6 +640,17 @@ halfTheScreenWidth equ 512
 ThescreenheightbeforeTheNotbar equ 608
 screenWidth equ 1024
 
+
+;;;;;;;;SERIAL;;;;;;;;
+
+VALUESENT DB ?
+VALUERECIEVED DB ?
+sendcursorx db 0
+sendcursory db 0
+recievecursorx db 0
+recievecursory db 13
+
+
 .code
 
 ;procedure to clear screen
@@ -3105,43 +3116,206 @@ jg startagain2
 
 ret
 Usernamescreenchecker2 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+INITIALIZESERIAL PROC 
+
+mov dx,3fbh 			; Line Control Register
+mov al,10000000b		;Set Divisor Latch Access Bit
+out dx,al				;Out it
+
+mov dx,3f8h			    ;SET LSB BAUD RATE DIVISOR LATCH
+mov al,0ch			
+out dx,al
+
+mov dx,3f9h             ;SET MSB BAUD RATE DIVISOR LATCH
+mov al,00h
+out dx,al
+
+mov dx,3fbh
+mov al,00011011b        ;CONFIGURATION OF SENDING BITS 
+out dx,al
+
+
+RET
+INITIALIZESERIAL ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+SEND PROC 
+
+;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH		; Line Status Register
+		
+AGAIN:  In al , dx 			;Read Line Status CHECK IF EMPTY
+  		test al , 00100000b
+  		JZ AGAIN                               ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+		mov ah,2 
+		mov dh,sendcursory
+		mov dl,sendcursorx
+		mov bx,0
+		int 10h 
+		
+		;;;;;;;special characters
+		cmp VALUESENT, 13
+		jnz scrollcont
+		mov sendcursorx,0
+		inc sendcursory
+		
+scrollcont:
+		inc sendcursorx   ;incrementing after printing 
+		cmp sendcursorx,79	;mov to the next line if line finished 
+		jnz contsend
+		mov sendcursorx,0 
+		inc sendcursory
+		
+		
+contsend:MOV AH,2
+		MOV DL,VALUESENT
+		INT 21H
+		
+		cmp sendcursory,11
+		jnz SENDRET					;check if at the end of the 12 lines then scroll
+		mov ah,6       ; function 6
+		mov al,3        ; scroll by 3 line    
+		mov bh,1fH       ; normal video attribute         
+		mov ch,0       ; upper left Y
+		mov cl,0        ; upper left X
+		mov dh,11     ; lower right Y
+		mov dl,79      ; lower right X 
+		int 10h		
+		mov sendcursory,8
+		
+
+SENDRET:RET
+SEND ENDP
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+RECIEVE PROC 
+
+;Check that Data is Ready
+		mov dx , 3FDH		; Line Status Register
+		
+		in al , dx 
+  		test al , 1
+  		JZ CHK                                    ;Not Ready
+		
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUERECIEVED , al
+		
+		
+		mov ah,2 
+		mov dh,recievecursory
+		mov dl,recievecursorx
+		mov bx,0
+		int 10h 
+		
+		
+		;;;;;;;special characters
+		cmp VALUERECIEVED, 13
+		jnz scrollcont2
+		mov recievecursorx,0
+		inc recievecursory
+		
+scrollcont2:
+		inc recievecursorx   ;incrementing after printing 
+		cmp recievecursorx,79	;mov to the next line if line finished 
+		jnz contrec
+		mov recievecursorx,0 
+		inc recievecursory
+		
+		
+contrec:MOV AH,2
+		MOV DL,VALUERECIEVED
+		INT 21H
+		
+		cmp recievecursory,24
+		jnz CHK					;check if at the end of the 12 lines then scroll
+	
+		mov ah,6       ; function 6
+		mov al,3        ; scroll by 3 line    
+		mov bh,4fH       ; normal video attribute         
+		mov ch,13       ; upper left Y
+		mov cl,0        ; upper left X
+		mov dh,24     ; lower right Y
+		mov dl,79      ; lower right X 
+		int 10h
+		mov recievecursory,21
+		
+
+CHK:RET
+RECIEVE ENDP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 chattingMenu proc far
 
-	mov ax, 4f02h
-	mov bx, 105h
-	int 10h ;graphical mode interrupt
-	
-	mov ah,2     ;moving the cursor to the below the frame messages to create the notificationbar
-    mov dx,1800h
-	mov bx,0
-    int 10h
+   mov ah,0
+   mov al,3
+   int 10h
 
-    mov ah,9     ;displaying the main page(frame)
-    mov dx,offset notbarmess
-    int 21h
+   mov ah,6       ; function 6
+   mov al,0        ; scroll by 1 line    
+   mov bh,1fH       ; normal video attribute         
+   mov ch,0       ; upper left Y
+   mov cl,0        ; upper left X
+   mov dh,11     ; lower right Y
+   mov dl,79      ; lower right X 
+   int 10h
 	
-	mov ah,2     ;moving the cursor to the below the frame messages to create the notificationbar
-    mov dx,0201h
-	mov bx,0
-    int 10h
 
-    mov ah,9     ;displaying the main page(frame)
-    mov dx,offset UserNameDatastring
-    int 21h
+   mov ah,6       ; function 6
+   mov al,0        ; scroll by 1 line    
+   mov bh,7H       ; normal video attribute         
+   mov ch,12       ; upper left Y
+   mov cl,0        ; upper left X
+   mov dh,12     ; lower right Y
+   mov dl,79      ; lower right X 
+   int 10h
 	
-	mov bx,0
-	mov ah,2     ;moving the cursor to the below the frame messages to create the notificationbar
-    mov dx,1A01h
-	mov bx,0
-    int 10h
 
-    mov ah,9     ;displaying the main page(frame)
-    mov dx,offset UserNameDatastring2
-    int 21h
-	
-	
+   mov ah,6       ; function 6
+   mov al,0        ; scroll by 1 line    
+   mov bh,4fH       ; normal video attribute         
+   mov ch,13       ; upper left Y
+   mov cl,0        ; upper left X
+   mov dh,24     ; lower right Y
+   mov dl,79      ; lower right X 
+   int 10h
+	 
+   
+   MOV VALUESENT,0
+   MOV VALUERECIEVED,0
+   
+   LOOPSERIAL:
+		 MOV AH,1
+		 INT 16H
+		 jz jumphereSERIAL
+		 MOV VALUESENT,AL
+		 MOV AH,7
+		 INT 21H
+		 CALL SEND
+		 
+jumphereSERIAL:CALL RECIEVE
+		 
+		 CMP VALUESENT,27
+		 JZ EXIT
+		 
+		 CMP VALUERECIEVED,27
+		 JZ EXIT
+		
+   JMP LOOPSERIAL
+
+EXIT:	
+
 
 ret
 chattingMenu endp
@@ -3156,7 +3330,8 @@ Main proc far
 	int 10h ;graphical mode interrupt
 	
 	Call GameName
-	
+	CALL INITIALIZESERIAL
+   
 rightusername:Call Usernamescreenchecker  ;user name screen 
 				call Usernamescreenchecker2
 				
@@ -3176,9 +3351,7 @@ WaitingForKeyPressed:mov ah,0
 					 
       
 chattingmode:call chattingMenu ;/////////////if f1 is pressed
-             mov ah,0
-             int 16h
-             cmp al,1bh
+             
              jz Mainmenujump 
 
 
