@@ -1,6 +1,63 @@
 
 
 ;;;;;;;MACROS;;;;;;;;;;;
+
+resetmainmenu MACRO
+
+mov chatmoderecieveboolean , 0  
+mov chatmodesendboolean    , 0
+mov playmodesendboolean    , 0
+mov playmoderecieveboolean , 0
+mov VALUERECIEVED,0
+mov VALUESENT,0
+ENDM
+
+RECIEVEMACRO MACRO
+LOCAL RECIEVECHK
+
+	;Check that Data is Ready
+		mov dx , 3FDH		; Line Status Register
+		
+		in al , dx 
+  		test al , 1
+  		JZ RECIEVECHK                                    ;Not Ready
+		
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUERECIEVED , al
+
+RECIEVECHK:
+
+ENDM
+
+SENDMACRO MACRO 
+LOCAL AGAINSEND,nothingsent
+
+	mov ah,1
+	int 16h
+	jz nothingsent
+	MOV VALUESENT,AH
+	
+;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH		; Line Status Register
+		
+AGAINSEND:    In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSEND                               ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+		mov ah,7  ;;;;clear buffer;;;
+		int 21h 
+
+nothingsent:
+ENDM 
+
+
 ;DRAW A GLUE MACRO
 DRAWAGLUE MACRO GLUEX,GLUEY
 	LOCAL @@DRAWG,@@BACKG  ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
@@ -360,7 +417,6 @@ DELETEABLOCK MACRO BLOCKX, BLOCKY
 	ENDM
 
 
-
 ;
 ;
 
@@ -641,7 +697,18 @@ ThescreenheightbeforeTheNotbar equ 608
 screenWidth equ 1024
 
 
-;;;;;;;;SERIAL;;;;;;;;
+;;;;;;;;;SERIAL MAINMENU;;;;;;;;;
+GAMEMODE  db ?
+PlayerNumber  db ?  
+chatmoderecieveboolean db 0  
+chatmodesendboolean    db 0
+playmodesendboolean    db 0
+playmoderecieveboolean db 0
+Inviteplaysent db 'Play invite Sent','$'
+Inviteplayrecieved db 'Play invite Recieved','$'
+Invitechatsent db 'Chat invite Sent','$'
+Invitechatrecieved db 'Chat invite Recieved','$'
+;;;;;;;;SERIAL CHAT MODE;;;;;;;;
 
 VALUESENT DB ?
 VALUERECIEVED DB ?
@@ -649,6 +716,7 @@ sendcursorx db 0
 sendcursory db 0
 recievecursorx db 0
 recievecursory db 13
+
 
 
 .code
@@ -2135,15 +2203,28 @@ AddBullet1 proc far
 		; mov bulletaddtimer,dh
 		
 	
-	mov ah,1    ;check if player pressed space
-    int 16h
-	jz addbulletreturn
-    cmp al,32
+	;mov ah,1    ;check if player pressed space
+    ;int 16h
+	;jz addbulletreturn
+    ;cmp al,32
+	cmp PlayerNumber,1
+	jnz addforplayer2
+	cmp VALUESENT,39h     ;space
+    jnz addbulletreturn   
+	jmp ADDBULLETJUMP
+	
+	addforplayer2:
+	cmp PlayerNumber,2  
+	jnz addbulletreturn
+	cmp VALUERECIEVED,39h     ;space
     jnz addbulletreturn
-	mov ah,7    ;clear key from buffer
-	int 21h
+	
+	;mov ah,7    ;clear key from buffer
+	;int 21h
 	
 	
+	
+	ADDBULLETJUMP:
 	Mov CX,BulletNumber
 	LEA SI,Bullets1X
 	LEA DI,Bullets1Y
@@ -2194,16 +2275,21 @@ AddBullet2 proc far
 	;	jz addbulletreturn2
 	;	mov bulletaddtimer2,dh
 	
+	;;TODO ;; MAKE THE PLAYERS USE THE SAME KEYS
 
-	mov ah,1    ;check if player pressed space
-    int 16h
-	jz addbulletreturn2
-    cmp al,120 ;x key for shooting
-    jnz addbulletreturn2
-	mov ah,7    ;clear key from buffer
-	int 21h
+	cmp PlayerNumber,2
+    jnz addforplayer22
+	cmp VALUESENT,2Dh     ;X key
+    jnz addbulletreturn2   
+	jmp ADDBULLETJUMP2
 	
+	addforplayer22:
+	cmp PlayerNumber,1  
+	jnz addbulletreturn2
+	cmp VALUERECIEVED,2Dh     ;X key
+	jnz addbulletreturn2
 	
+	ADDBULLETJUMP2:
 	Mov CX,BulletNumber
 	LEA SI,Bullets2X
 	LEA DI,Bullets2Y
@@ -2783,7 +2869,7 @@ Bulletanimatedreturn2: ret
 BulletAnimation2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; TODO ;; CHECK WHY THE PLAYER 1 is repeated for some wierd reason 
 ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 						 
@@ -2793,26 +2879,34 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		jmp exitadjust1	
 		
 				;CHECKING WHETHER USER HAS PRESSED A KEY
-	StartAdj2:	MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
-		INT 16H
-		jz exitadjust1
+	StartAdj2:
+	CMP PlayerNumber,2
+	jnz checkforplayer1
 	
-	CMP AH,1EH    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	CMP VALUESENT,1EH    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
 	JE UP_PRESSED
 	
-	CMP AH,2CH    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	CMP VALUESENT,2CH    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
 	JE DOWN_PRESSED
 	
-	JMP exitadjust1  ;KEYS OTHER THAN UP AND DOWN HAVE BEEN PRESSED WHICH MAKES NO EFFECT
+	checkforplayer1:
+	CMP PlayerNumber,1
+	jnz notplayer1
 	
+	CMP VALUERECIEVED,1EH    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	JE UP_PRESSED
+	
+	CMP VALUERECIEVED,2CH    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	JE DOWN_PRESSED
+	
+	notplayer1:
+	JMP exitadjust1  ;KEYS OTHER THAN UP AND DOWN HAVE BEEN PRESSED WHICH MAKES NO EFFECT
 	
 	UP_PRESSED:
 		CMP SHOOTER2Y,30
 		JL exitadjust1
 		SUB SHOOTER2Y,Shooter2Speed  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
-		MOV BX,0       
-		mov ah,7    ;clear key from buffer
-		int 21h
+		MOV BX,0
 		JMP exitadjust1
 	
 	DOWN_PRESSED:
@@ -2821,8 +2915,6 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		JGE exitadjust1
 		ADD SHOOTER2Y,Shooter2Speed
 		MOV BX,0
-		mov ah,7    ;clear key from buffer
-		int 21h
 		JMP exitadjust1
 		
 		
@@ -2842,16 +2934,27 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	jmp exitadjust2
 		  
 				;CHECKING WHETHER USER HAS PRESSED A KEY
-	StartAdj1:	MOV AH,1  ;RETURNS THE CORRESPONDING KEY'S SCANCODE IN AH
-		INT 16H
-		jz exitadjust2
+	StartAdj1:
+	CMP PlayerNumber,1
+	jnz checkforplayer2
 	
-	CMP AH,48H    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	CMP VALUESENT,48H    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
 	JE UP_PRESSED2
 	
-	CMP AH,50H    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	CMP VALUESENT,50H    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
 	JE DOWN_PRESSED2
 	
+	checkforplayer2:
+	CMP PlayerNumber,2
+	jnz notplayer2
+	
+	CMP VALUERECIEVED,48H    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	JE UP_PRESSED2
+	
+	CMP VALUERECIEVED,50H    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	JE DOWN_PRESSED2
+	
+	notplayer2:
 	JMP exitadjust2  ;KEYS OTHER THAN UP AND DOWN HAVE BEEN PRESSED WHICH MAKES NO EFFECT
 	
 	
@@ -2859,9 +2962,7 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		CMP SHOOTER1Y,30
 		JLE exitadjust2
 		SUB SHOOTER1Y,Shooter1Speed  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
-		MOV BX,0       
-		mov ah,7    ;clear key from buffer
-		int 21h
+		MOV BX,0
 		JMP exitadjust2
 	
 	DOWN_PRESSED2:
@@ -2870,8 +2971,6 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		JGE exitadjust2
 		ADD SHOOTER1Y,Shooter1Speed
 		MOV BX,0
-		mov ah,7    ;clear key from buffer
-		int 21h
 		JMP exitadjust2
 		
 		
@@ -3125,7 +3224,7 @@ mov al,10000000b		;Set Divisor Latch Access Bit
 out dx,al				;Out it
 
 mov dx,3f8h			    ;SET LSB BAUD RATE DIVISOR LATCH
-mov al,0ch			
+mov al,1h			
 out dx,al
 
 mov dx,3f9h             ;SET MSB BAUD RATE DIVISOR LATCH
@@ -3314,11 +3413,130 @@ jumphereSERIAL:CALL RECIEVE
 		
    JMP LOOPSERIAL
 
-EXIT:	
-
-
-ret
+EXIT:ret
 chattingMenu endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Mainmenuserialcom proc far
+;; Sends and recieves the request from the players, it has one loop that sends and recieves and checks to set booleans and types to the notification bar
+;;create two booleans for each player for each mode that totals 4 if he sends type the invitation is sent
+;;add another boolean to check who pressed first
+;;if he recieves type is recieved, if the two booleans of a type are true break the loop and go to that mode for each
+
+Mainmenuserialloop:
+	
+	
+	SENDMACRO
+	RECIEVEMACRO
+	
+	cmp VALUESENT,1 ;ESC
+	jz tempGAMEMODEEXIT
+	recexitcheck:
+	cmp VALUERECIEVED,1
+	jz tempGAMEMODEEXIT
+	jmp Otherchecks
+
+tempGAMEMODEEXIT :jmp GAMEMODEEXIT
+;send if f2 write and change boolean 
+;send if f1 write and change boolean
+;recieve if f2 write and change boolean
+;recieve if f1 write and change boolean
+Otherchecks:
+cmp VALUESENT,3bh
+jnz chatmodesendcheck
+mov chatmodesendboolean,1
+mov ah,2     ;moving the cursor to Print invitation
+mov dx,2802h
+mov bx,0
+int 10h
+mov ah,9     ;print invitation
+mov dx,offset Invitechatsent
+int 21h
+
+chatmodesendcheck:
+
+cmp VALUERECIEVED,3bh
+jnz chatmoderecievecheck
+mov chatmoderecieveboolean,1
+mov ah,2     ;moving the cursor to Print invitation
+mov dx,2A02h
+mov bx,0
+int 10h
+mov ah,9     ;print invitation
+mov dx,offset Invitechatrecieved
+int 21h
+
+chatmoderecievecheck:
+
+cmp VALUESENT,3Ch
+jnz playmodesendcheck
+mov playmodesendboolean,1
+cmp playmoderecieveboolean,1     ; 
+jnz heisnotplayer1               ;
+mov PlayerNumber,2               ;if recieve is 1 that means he is player 2
+jmp playmoderecievecheck
+heisnotplayer1:                  ;
+mov ah,2     ;moving the cursor to Print invitation
+mov dx,2802h
+mov bx,0
+int 10h
+mov ah,9     ;print invitation
+mov dx,offset Inviteplaysent
+int 21h
+
+playmodesendcheck:
+
+cmp VALUERECIEVED,3Ch															
+jnz playmoderecievecheck
+mov playmoderecieveboolean,1
+cmp playmodesendboolean,1        ; 
+jnz heisnotplayer2               ;
+mov PlayerNumber,1               ;if send is 1 that means he is player 1
+heisnotplayer2:                  ;
+mov ah,2     ;moving the cursor to Print invitation
+mov dx,2A02h
+mov bx,0
+int 10h
+mov ah,9     ;print invitation
+mov dx,offset Inviteplayrecieved
+int 21h
+
+playmoderecievecheck:
+
+;check the booleans and put the mode into the memory	
+cmp chatmodesendboolean,1
+jnz checkplaymode
+cmp chatmoderecieveboolean,1
+jnz checkplaymode
+jmp chatmodesetter
+
+
+checkplaymode:
+cmp playmodesendboolean,1
+jnz continuecheckserial												
+cmp playmoderecieveboolean,1																								
+jnz continuecheckserial												
+jmp playmodesetter 
+
+continuecheckserial:
+jmp Mainmenuserialloop
+
+;;;;;;Become player 1 and go to chat mode
+chatmodesetter:
+mov GAMEMODE,1
+ret
+
+;;;;;;Become player 1 and go to play mode 
+playmodesetter:
+mov GAMEMODE,2
+ret
+
+;;;;;;GAMEMODE 3 exit the game 
+GAMEMODEEXIT:
+mov GAMEMODE,3
+ret
+Mainmenuserialcom endp
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Main proc far
@@ -3336,21 +3554,30 @@ rightusername:Call Usernamescreenchecker  ;user name screen
 				call Usernamescreenchecker2
 				
 	
-Mainmenujump:	CALL MainMenu
+Mainmenujump:	mov GAMEMODE,0
+				CALL MainMenu
+				CALL Mainmenuserialcom ; send and recieve between players
+				resetmainmenu		   ;reset booleans
 				
-	                
-WaitingForKeyPressed:mov ah,0
-                     int 16h
-                     cmp al,1bh
-                     jz tempexitmain
-                     cmp ah,3Bh
-                     jz chattingmode  
-                     cmp ah,3Ch
-                     jz playingmode
-                     jmp WaitingForKeyPressed
+				cmp GAMEMODE,1
+	            jz chattingmode
+				cmp GAMEMODE,2
+				jz playingmode
+				cmp GAMEMODE,3
+				jz tempexitmain
+; WaitingForKeyPressed:mov ah,0
+                     ; int 16h
+                     ; cmp al,1bh
+                     ; jz tempexitmain
+                     ; cmp ah,3Bh
+                     ; jz chattingmode  
+                     ; cmp ah,3Ch
+                     ; jz playingmode
+                     ; jmp WaitingForKeyPressed
 					 
       
-chattingmode:call chattingMenu ;/////////////if f1 is pressed
+chattingmode:call chattingMenu ;/////////////if f1 is pressed  ;;TODO;; FIX P DISSAPPEAR AFTER YOU RETURN FROM CHAT 
+															   ;;TODO;; FIX SPACING IN CHAT MODE AND RESET CURSORS
              
              jz Mainmenujump 
 
@@ -3373,7 +3600,8 @@ playingmode:  ;/////////////if f2 is pressed
 			  CALL DRAWLEFTWALLS  
 				
 		maingameloop:
-		
+				;; TODO ;; MAYBE WE ADD SOMETHING HERE TO MAKE THE GAME SYNCHRONUS?
+				;;PLAYER 1 sends a special character maybe?
 				
 				mov cx, 0H    ;  delay
 				mov dx, 8235h
@@ -3383,6 +3611,8 @@ playingmode:  ;/////////////if f2 is pressed
 				push si
                 push di
 				
+				RECIEVEMACRO   ;;SERIAL SEND AND RECIEVE
+				SENDMACRO
 				
 				call CLEARSHOOTER1  ;Shooter Functions
 				call CLEARSHOOTER2
@@ -3422,14 +3652,16 @@ playingmode:  ;/////////////if f2 is pressed
                 pop di
                 pop si
 			
-			mov ah,1    ;check if player pressed exit
-            int 16h
-			jz cont
-            mov ah,7    ;clear key from buffer
-			int 21h
-			cmp al,1bh
-            jz ScoreScreenjmp
+			cmp VALUESENT,1		;if escape is pressed
+			mov VALUESENT,0
+            jz ScoreScreenjmp   ;if escape is pressed
+								;if escape is pressed
+			cmp VALUERECIEVED,1 ;if escape is pressed
+            mov VALUERECIEVED,0
+			jz ScoreScreenjmp   ;if escape is pressed
 			
+			mov VALUESENT,0
+			mov VALUERECIEVED,0
 					 
      cont:  jmp maingameloop              
 	
