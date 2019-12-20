@@ -2,6 +2,8 @@
 
 ;;;;;;;MACROS;;;;;;;;;;;
 
+;;TODO IDEAS FOR SYNC MAYBE SEND PLAYER POSITIONS AND SCORE AND TIME????
+
 resetmainmenu MACRO
 
 mov chatmoderecieveboolean , 0  
@@ -196,6 +198,92 @@ DELETEAGLUE BLOCKXX , BLOCKYY
 EXITGlueCHECKER1:
 ENDM
 
+BlockCheckermiddle1_L2  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER ;aya
+local EXITBLOCKCHECKERMIDDLE121
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,0                        
+JZ EXITBLOCKCHECKERMIDDLE121 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME first X 
+JB EXITBLOCKCHECKERMIDDLE121      
+
+MOV BX,BLOCKXX  
+ADD BX,BlockwidthMiddle+20               
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME  last X 
+JG EXITBLOCKCHECKERMIDDLE121                          
+                                              
+MOV BX,BLOCKYY   
+sub bx,5                             
+cmp word ptr [si],BX                          
+JB EXITBLOCKCHECKERMIDDLE121                          
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight+5                           
+CMP word ptr [si],BX                          
+JA EXITBLOCKCHECKERMIDDLE121
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+mov ax,BLOCKXX
+SUB ax,70
+mov tempbarrierTipbullx1,ax
+mov ax,BLOCKYY
+sub ax,15
+mov tempbarrierTipbully1,ax
+call addbarbullet2
+
+EXITBLOCKCHECKERMIDDLE121:
+ENDM
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+BlockCheckermiddle2_L2  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER ;aya 
+local EXITBLOCKCHECKERMIDDLE22
+
+mov di,offsetBulletx						
+mov si,offsetBullety                          
+											
+cmp BLOCKDRAWNNUMBER,0                        
+JZ EXITBLOCKCHECKERMIDDLE22 ;CHECK IF IT DOESNT EXIST
+                                              
+MOV BX,BLOCKXX                                
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME first X 
+JG EXITBLOCKCHECKERMIDDLE22     
+               
+MOV BX,BLOCKXX  
+sub bx,BlockwidthMiddle+20                              
+cmp word ptr [di],BX  ;CHECK IF AT THE SAME last X 
+JL EXITBLOCKCHECKERMIDDLE22                          
+                                              
+MOV BX,BLOCKYY  
+sub bx,5                              
+cmp word ptr [si],BX                          
+JB EXITBLOCKCHECKERMIDDLE22                         
+                                              
+MOV BX,BLOCKYY                                
+Add BX,Blockheight+5                            
+CMP word ptr [si],BX                          
+JA EXITBLOCKCHECKERMIDDLE22
+
+MOV word ptr [si],0
+MOV word ptr [di],0
+mov ax,BLOCKXX
+sub ax,23
+mov tempbarrierTipbullx2,ax
+mov ax,BLOCKYY
+sub ax,20
+mov tempbarrierTipbully2,ax
+
+call addbarbullet1
+
+
+EXITBLOCKCHECKERMIDDLE22:
+ENDM
+;;;;;;;;;;;;;;;;;;;;;;;
+
 BlockCheckermiddle1  MACRO offsetBulletx, offsetBullety, BLOCKXX, BLOCKYY ,BLOCKDRAWNNUMBER
 local EXITBLOCKCHECKERMIDDLE1
 
@@ -388,6 +476,33 @@ DRAWABLOCKMIDDLE MACRO BLOCKX,BLOCKY ,BCOLOR
 
 ENDM
 
+DRAWBarrierTip MACRO BLOCKX,BLOCKY,BCOLOR ;aya
+	LOCAL @@DRAW,@@BACK  ;BECAUSE WE NEED
+	MOV BX,00
+	ADD BX,BLOCKY
+	ADD BX,30  ;PUTTING IN BX BLOCK MAX L
+	@@DRAW:
+		MOV CX,BLOCKX	;DRAWING PIXELS H
+		MOV DX,BLOCKY	
+		MOV AL,BCOLOR	    ;CHOOSING COL
+		MOV AH,0CH
+	@@BACK:
+		INT 10H
+		INC CX
+		ADD BLOCKX,10  ;BLOCK MAX WIDTH
+		CMP CX,BLOCKX
+		PUSHF			;ADJUSTING FLAGS
+		SUB BLOCKX,10 
+		POPF
+		JNZ @@BACK   ;TILL HERE
+		
+	INC BLOCKY			
+	CMP BLOCKY,BX
+	JNE @@DRAW 		;KEEP DRAWING HORIZON
+	SUB BLOCKY,30   
+
+ENDM
+
 ;DELETE A BLOCK MACRO
 DELETEABLOCK MACRO BLOCKX, BLOCKY
     LOCAL @@DRAWW, @@BACKK         ;BECAUSE WE NEED TO CALL MACROS MORE THAN ONCE MUST USE LOCAL NUMERIC LABELS ;REGULAR LABELS WONT WORK
@@ -451,6 +566,11 @@ TOBEDRAWNABLOCK DB 0,24 DUP(1)
 tempbulletx dw ?
 tempbullety dw ?
 temptobedrawn db ?
+tempbarrierTipbullx1 dw ?;aya
+tempbarrierTipbully1 dw ?
+tempbarrierTipbullx2 dw ?
+tempbarrierTipbully2 dw ?
+
 
 Blockheight equ 90
 Blockwidth  equ 40
@@ -605,6 +725,35 @@ BLOCK23Y DW 495
 BLOCK24X DW 980  
 BLOCK24Y DW 495
 
+;;;;;;;;;;;;;;;;;;aya
+
+barrierTipx11 dw 490
+barrierTipy1 dw 50
+barrierTipx12 dw 510
+
+barrierTipx21 dw 490
+barrierTipy2 dw 144
+barrierTipx22 dw 510
+
+
+barrierTipx31 dw 490
+barrierTipy3 dw 238
+barrierTipx32 dw 510
+
+
+barrierTipx41 dw 490
+barrierTipy4 dw 332
+barrierTipx42 dw 510
+
+
+barrierTipx51 dw 490
+barrierTipy5 dw 426
+barrierTipx52 dw 510
+
+
+barrierTipx61 dw 490
+barrierTipy6 dw 520
+barrierTipx62 dw 510
 ;;;;;;;;;;;;;;;;;;MIDDLE BLOCKS MEMORY
 
 MiddleBlocksx1 dw 500 
@@ -664,8 +813,8 @@ Player2Score db 0
 booleanisbigger1 db 0
 booleanisbigger2 db 0
 
-frameMes1 db 'Press F1 To Enter Chat Mode',10,13,'$'
 frameMes2 db 'Press F2 To Start A New Game',10,'$'
+frameMes1 db ' Press F1 To Enter Chat Mode',10,13,'$'
 frameMes3 db 'Press ESC to Exit The Game',10,'$'
 Usernamemessage db 'Please Enter your Name Player 1 :','$'
 Usernamemessage2 db 'Please Enter your Name Player 2 :','$'
@@ -696,6 +845,10 @@ halfTheScreenWidth equ 512
 ThescreenheightbeforeTheNotbar equ 608
 screenWidth equ 1024
 
+Level db ?
+Lvl1mess db "Press 1 for level 1",'$'
+Lvl2mess db "Press 2 for level 2",'$'
+clearlevel db "                             ",'$'
 
 ;;;;;;;;;SERIAL MAINMENU;;;;;;;;;
 GAMEMODE  db ?
@@ -708,6 +861,7 @@ Inviteplaysent db 'Play invite Sent','$'
 Inviteplayrecieved db 'Play invite Recieved','$'
 Invitechatsent db 'Chat invite Sent','$'
 Invitechatrecieved db 'Chat invite Recieved','$'
+SyncCHAR equ 0A6h
 ;;;;;;;;SERIAL CHAT MODE;;;;;;;;
 
 VALUESENT DB ?
@@ -1045,6 +1199,65 @@ Drawmiddleexit:RET
 DRAWMIDDLEBLOCKS ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+DRAWMIDDLEBLOCKS2 PROC FAR ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+cmp Middleblockboolean,0
+jnz drawoddmiddle2 
+
+tempdrawevenmiddle2:jmp drawevenmiddle2
+
+drawoddmiddle2:
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy1,MiddleBlockcolor ;draw
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy3,MiddleBlockcolor
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy5,MiddleBlockcolor
+DRAWBarrierTip  barrierTipx11,barrierTipy1,0Eh 
+DRAWBarrierTip  barrierTipx12,barrierTipy1,0Eh 
+DRAWBarrierTip  barrierTipx31,barrierTipy3,0Eh 
+DRAWBarrierTip  barrierTipx32,barrierTipy3,0Eh 
+DRAWBarrierTip  barrierTipx51,barrierTipy5,0Eh 
+DRAWBarrierTip  barrierTipx52,barrierTipy5,0Eh 
+
+
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy2,0h ;delete
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy4,0h
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy6,0h
+DRAWBarrierTip  barrierTipx21,barrierTipy2,0h
+DRAWBarrierTip  barrierTipx22,barrierTipy2,0h
+DRAWBarrierTip  barrierTipx41,barrierTipy4,0h
+DRAWBarrierTip  barrierTipx42,barrierTipy4,0h
+DRAWBarrierTip  barrierTipx61,barrierTipy6,0h
+DRAWBarrierTip  barrierTipx62,barrierTipy6,0h
+
+jmp Drawmiddleexit2 
+
+drawevenmiddle2:
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy2,MiddleBlockcolor ;draw
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy4,MiddleBlockcolor
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy6,MiddleBlockcolor
+DRAWBarrierTip  barrierTipx21,barrierTipy2,0Eh
+DRAWBarrierTip  barrierTipx22,barrierTipy2,0Eh
+DRAWBarrierTip  barrierTipx41,barrierTipy4,0Eh
+DRAWBarrierTip  barrierTipx42,barrierTipy4,0Eh
+DRAWBarrierTip  barrierTipx61,barrierTipy6,0Eh
+DRAWBarrierTip  barrierTipx62,barrierTipy6,0Eh
+
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy1,0h ;delete
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy3,0h
+DRAWABLOCKMIDDLE MiddleBlocksx1,MiddleBlocksy5,0h
+DRAWBarrierTip  barrierTipx11,barrierTipy1,0h 
+DRAWBarrierTip  barrierTipx12,barrierTipy1,0h 
+DRAWBarrierTip  barrierTipx31,barrierTipy3,0h 
+DRAWBarrierTip  barrierTipx32,barrierTipy3,0h 
+DRAWBarrierTip  barrierTipx51,barrierTipy5,0h 
+DRAWBarrierTip  barrierTipx52,barrierTipy5,0h 
+
+
+Drawmiddleexit2:RET
+
+DRAWMIDDLEBLOCKS2 ENDP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 BlinkMiddleandInvert proc far
 
@@ -1071,6 +1284,31 @@ middleinvertjmp: call DRAWMIDDLEBLOCKS
 ret
 BlinkMiddleandInvert endp
 
+
+BlinkMiddleandInvert2 proc far ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	mov ax,2c00h 
+	int 21h   
+	cmp booleantime4,0
+	jnz hastimecomemiddle2
+	mov MiddleTimeValue,dh
+	mov booleantime4,1
+	
+	hastimecomemiddle2:	
+		cmp dh,MiddleTimeValue
+		jz middleinvertjmp2
+		
+		mov MiddleTimeValue,dh  ;invert the blocks
+		mov al,Middleblockboolean
+		mov ah,Middleblockbooleaninverted
+		
+		mov Middleblockboolean,ah
+		mov Middleblockbooleaninverted,al
+		
+middleinvertjmp2: call DRAWMIDDLEBLOCKS2
+
+ret
+BlinkMiddleandInvert2 endp
 
 
 ;---------------------------------------------------------------------------
@@ -2275,7 +2513,6 @@ AddBullet2 proc far
 	;	jz addbulletreturn2
 	;	mov bulletaddtimer2,dh
 	
-	;;TODO ;; MAKE THE PLAYERS USE THE SAME KEYS
 
 	cmp PlayerNumber,2
     jnz addforplayer22
@@ -2320,7 +2557,80 @@ AddBullet2 proc far
 		
 addbulletreturn2 :ret
 AddBullet2 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+AddbarBullet1 proc far ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Add the Bullet to the memory location to be drawn
+	
+	
+	Mov CX,BulletNumber
+	LEA SI,Bullets1X
+	LEA DI,Bullets1Y
+	
+		  
+	
+	AddbarBulletLoop:
+		
+		CMP word ptr [SI],0 ;CHECKING IF THERE IS A BULLET SAVED 
+		JNZ NEXTbarbull
+		CMP word ptr [DI],0
+		JNZ NEXTbarbull
+		
+	    ;ADDING THE BULLET TO MEMORY
+			MOV AX,tempbarrierTipbully2 ;inverted x and y
+			ADD AX,54
+			MOV [SI],AX
+			MOV AX,tempbarrierTipbullx2 ;inverted x and y
+			ADD AX,34
+			MOV [DI],AX
+			jmp addbarbulletreturn
+			
+		NEXTbarbull: 
+		ADD SI,2
+		ADD DI,2
+		DEC CX
+		cmp cx,0
+		JNZ AddbarBulletLoop
+		
+addbarbulletreturn :ret
+AddbarBullet1 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+AddbarBullet2 proc far ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Add the Bullet to the memory location to be drawn
+	
+	
+	Mov CX,BulletNumber
+	LEA SI,Bullets2X
+	LEA DI,Bullets2Y
+	
+		  
+	
+	AddbarBulletLoop2:
+		
+		CMP word ptr [SI],0 ;CHECKING IF THERE IS A BULLET SAVED 
+		JNZ NEXTbarbull2
+		CMP word ptr [DI],0
+		JNZ NEXTbarbull2
+		
+	    ;ADDING THE BULLET TO MEMORY
+			MOV AX,tempbarrierTipbully1 ;inverted x and y
+			ADD AX,54
+			MOV [SI],AX
+			MOV AX,tempbarrierTipbullx1 ;inverted x and y
+			ADD AX,23
+			MOV [DI],AX
+			jmp addbarbulletreturn2
+			
+		NEXTbarbull2: 
+		ADD SI,2
+		ADD DI,2
+		DEC CX
+		cmp cx,0
+		JNZ AddbarBulletLoop2
+		
+addbarbulletreturn2 :ret
+AddbarBullet2 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -2352,6 +2662,7 @@ loopBulletcollision:push cx
 											 jg checkbullblock1
 											 mov word ptr[si],0
 											 mov word ptr[di],0
+											 call DRAWSHOOTER2
 											 add CounterFreeze1,1
 											 cmp CounterFreeze1,5
 											 jnz temp1beginnextcollisionchecking
@@ -2428,6 +2739,104 @@ BulletCollisionreturn: ret
 ;IF THEY COLLIDED RESET THE BULLET 
 
 BulletCollision1 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BulletCollision1_L2  proc far ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+mov si,offset Bullets1X    ;check if the bullets positions (if not zero) are collided with something  
+mov di,offset Bullets1y
+mov cx,11 
+loopBulletcollision12:push cx
+					cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
+                    jz tempbeginnextcollisionchecking12  
+                    cmp word ptr[di],0
+                    jz tempbeginnextcollisionchecking12 
+					jmp checkBullWithShooterColl12
+					
+					tempbeginnextcollisionchecking12:jmp beginnextcollisionchecking12
+					
+					checkBullWithShooterColl12:mov bx,SHOOTER2X
+											 cmp word ptr[di],bx ;x position compare
+					                         jbe checkbullblock112
+											 mov bx,SHOOTER2Y ;y upper position compare 
+											 cmp word ptr[si],bx
+											 jb checkbullblock112
+											 mov bx,SHOOTER2Y ;y lower position compare
+											 add bx,Shooterlength
+											 cmp SHOOTER2BIGGER,1
+											 jnz nomagnify12
+											 add bx,45        ;magnification difference
+								nomagnify12:	 cmp word ptr[si],bx
+											 jg checkbullblock112
+											 mov word ptr[si],0
+											 mov word ptr[di],0
+											 call DRAWSHOOTER2
+											 add CounterFreeze1,1
+											 cmp CounterFreeze1,5
+											 jnz temp1beginnextcoisionchecking
+										
+											 mov BooleanFreeze1,maxfreezetime;shooter2 should be freezed for 2 sec 
+											 mov CounterFreeze1,0
+											 jmp beginnextcollisionchecking12
+											 
+					temp1beginnextcoisionchecking: jmp beginnextcollisionchecking12		
+											 
+					
+					
+			        checkbullblock112:	mov tempbullety,si
+										mov tempbulletx,di
+										
+									    ;check for blocks in the middle of the screen
+										BlockCheckermiddle1_L2 tempbulletx, tempbullety, MiddleBlocksx1,MiddleBlocksy1,Middleblockboolean
+										BlockCheckermiddle1_L2 tempbulletx, tempbullety, MiddleBlocksx3,MiddleBlocksy3,Middleblockboolean
+										BlockCheckermiddle1_L2 tempbulletx, tempbullety, MiddleBlocksx5,MiddleBlocksy5,Middleblockboolean
+										BlockCheckermiddle1_L2 tempbulletx, tempbullety, MiddleBlocksx2,MiddleBlocksy2,Middleblockbooleaninverted
+										BlockCheckermiddle1_L2 tempbulletx, tempbullety, MiddleBlocksx4,MiddleBlocksy4,Middleblockbooleaninverted
+										BlockCheckermiddle1_L2 tempbulletx, tempbullety, MiddleBlocksx6,MiddleBlocksy6,Middleblockbooleaninverted
+										
+										;check for glues
+										GlueChecker1 tempbulletx, tempbullety, GLUE1314X, GLUE1314Y, ISGLUEDRAWN+7 
+										GlueChecker1 tempbulletx, tempbullety, GLUE1516X, GLUE1516Y, ISGLUEDRAWN+8
+										GlueChecker1 tempbulletx, tempbullety, GLUE1718X, GLUE1718Y, ISGLUEDRAWN+9
+										GlueChecker1 tempbulletx, tempbullety, GLUE1920X, GLUE1920Y, ISGLUEDRAWN+10
+										GlueChecker1 tempbulletx, tempbullety, GLUE2122X, GLUE2122Y, ISGLUEDRAWN+11
+										GlueChecker1 tempbulletx, tempbullety, GLUE2324X, GLUE2324Y, ISGLUEDRAWN+12
+										
+										;check for the blocks that add score
+										BlockChecker1 tempbulletx, tempbullety, BLOCK13X,BLOCK13Y,TOBEDRAWNABLOCK+13
+										BlockChecker1 tempbulletx, tempbullety, BLOCK14X,BLOCK14Y,TOBEDRAWNABLOCK+14
+										BlockChecker1 tempbulletx, tempbullety, BLOCK15X,BLOCK15Y,TOBEDRAWNABLOCK+15
+										BlockChecker1 tempbulletx, tempbullety, BLOCK16X,BLOCK16Y,TOBEDRAWNABLOCK+16
+										BlockChecker1 tempbulletx, tempbullety, BLOCK17X,BLOCK17Y,TOBEDRAWNABLOCK+17
+										BlockChecker1 tempbulletx, tempbullety, BLOCK18X,BLOCK18Y,TOBEDRAWNABLOCK+18
+										BlockChecker1 tempbulletx, tempbullety, BLOCK19X,BLOCK19Y,TOBEDRAWNABLOCK+19
+										BlockChecker1 tempbulletx, tempbullety, BLOCK20X,BLOCK20Y,TOBEDRAWNABLOCK+20
+										BlockChecker1 tempbulletx, tempbullety, BLOCK21X,BLOCK21Y,TOBEDRAWNABLOCK+21
+										BlockChecker1 tempbulletx, tempbullety, BLOCK22X,BLOCK22Y,TOBEDRAWNABLOCK+22
+										BlockChecker1 tempbulletx, tempbullety, BLOCK23X,BLOCK23Y,TOBEDRAWNABLOCK+23
+										BlockChecker1 tempbulletx, tempbullety, BLOCK24X,BLOCK24Y,TOBEDRAWNABLOCK+24
+										
+									
+										
+					checkbulllimit12: cmp word ptr [di],ScreenWidth-15
+									jbe beginnextcollisionchecking12
+									mov word ptr[si],0
+									mov word ptr[di],0
+									
+					
+                beginnextcollisionchecking12:add si,2
+										   add di,2
+										   pop cx
+										   dec cx  
+										   cmp cx,0
+				                   jnz temploopBulletcollision12
+								   jz BulletCollisionreturn12
+				
+temploopBulletcollision12: jmp loopBulletcollision12
+
+BulletCollisionreturn12: ret
+BulletCollision1_L2 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2460,6 +2869,7 @@ loopBulletcollision2:push cx
 											 jg checkbullblock12
 											 mov word ptr[si],0
 											 mov word ptr[di],0
+											 call DRAWSHOOTER1
 											 add CounterFreeze2,1
 											 cmp CounterFreeze2,5
 											 jnz temp2beginnextcollisionchecking2
@@ -2537,6 +2947,103 @@ BulletCollision2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+BulletCollision2_L2 proc far ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+mov si,offset Bullets2X    ;check if the bullets positions (if not zero) are collided with something  
+mov di,offset Bullets2y
+mov cx,11 
+loopBulletcollision22:push cx
+					cmp word ptr[si],0   ;LOOP OVER THE BULLETS AND CHECK IF THEY ARE NOT ZERO 
+                    jz tempbeginnextcollisionchecking_22  
+                    cmp word ptr[di],0
+                    jz tempbeginnextcollisionchecking_22
+					jmp checkBullWithShooterColl22
+					
+					tempbeginnextcollisionchecking_22:jmp beginnextcollisionchecking22
+					
+					
+					checkBullWithShooterColl22:mov bx,SHOOTER1X
+											 cmp word ptr[di],bx
+					                         jge checkbullblock122
+											 mov bx,SHOOTER1Y ;y upper position compare 
+											 cmp word ptr[si],bx
+											 jb checkbullblock122
+											 mov bx,SHOOTER1Y ;y lower position compare
+											 add bx,Shooterlength
+											 cmp SHOOTER1BIGGER,1
+											 jnz nomagnify22
+											 add bx,45        ;magnification difference
+							nomagnify22:		 cmp word ptr[si],bx
+											 jg checkbullblock122
+											 mov word ptr[si],0
+											 mov word ptr[di],0
+											 call DRAWSHOOTER1
+											 add CounterFreeze2,1
+											 cmp CounterFreeze2,5
+											 jnz tempbeginnextcollisionchecking_22
+										
+											 mov BooleanFreeze2,maxfreezetime;shooter1 should be freezed for 5sec 
+											 mov CounterFreeze2,0
+											 jmp beginnextcollisionchecking22  
+
+						
+
+											 
+			        checkbullblock122:
+									 mov tempbullety,si
+									 mov tempbulletx,di
+									 
+									 ;check for the blocks in the middle
+									 BlockCheckermiddle2_L2 tempbulletx, tempbullety, MiddleBlocksx1,MiddleBlocksy1,Middleblockboolean
+									 BlockCheckermiddle2_L2 tempbulletx, tempbullety, MiddleBlocksx3,MiddleBlocksy3,Middleblockboolean
+									 BlockCheckermiddle2_L2 tempbulletx, tempbullety, MiddleBlocksx5,MiddleBlocksy5,Middleblockboolean
+									 BlockCheckermiddle2_L2 tempbulletx, tempbullety, MiddleBlocksx2,MiddleBlocksy2,Middleblockbooleaninverted
+									 BlockCheckermiddle2_L2 tempbulletx, tempbullety, MiddleBlocksx4,MiddleBlocksy4,Middleblockbooleaninverted
+									 BlockCheckermiddle2_L2 tempbulletx, tempbullety, MiddleBlocksx6,MiddleBlocksy6,Middleblockbooleaninverted
+									 
+									 ;check for glues
+									 GlueChecker2 tempbulletx, tempbullety, GLUE12X  , GLUE12Y  , ISGLUEDRAWN+1
+									 GlueChecker2 tempbulletx, tempbullety, GLUE34X  , GLUE34Y  , ISGLUEDRAWN+2
+									 GlueChecker2 tempbulletx, tempbullety, GLUE56X  , GLUE56Y  , ISGLUEDRAWN+3
+									 GlueChecker2 tempbulletx, tempbullety, GLUE78X  , GLUE78Y  , ISGLUEDRAWN+4
+									 GlueChecker2 tempbulletx, tempbullety, GLUE910X , GLUE910Y , ISGLUEDRAWN+5
+									 GlueChecker2 tempbulletx, tempbullety, GLUE1112X, GLUE1112Y, ISGLUEDRAWN+6
+									 
+									
+									;check for the blocks that add score
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK1X ,BLOCK1Y ,TOBEDRAWNABLOCK+1
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK2X ,BLOCK2Y ,TOBEDRAWNABLOCK+2
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK3X ,BLOCK3Y ,TOBEDRAWNABLOCK+3
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK4X ,BLOCK4Y ,TOBEDRAWNABLOCK+4
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK5X ,BLOCK5Y ,TOBEDRAWNABLOCK+5
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK6X ,BLOCK6Y ,TOBEDRAWNABLOCK+6
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK7X ,BLOCK7Y ,TOBEDRAWNABLOCK+7
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK8X ,BLOCK8Y ,TOBEDRAWNABLOCK+8
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK9X ,BLOCK9Y ,TOBEDRAWNABLOCK+9
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK10X,BLOCK10Y,TOBEDRAWNABLOCK+10
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK11X,BLOCK11Y,TOBEDRAWNABLOCK+11
+									 BlockChecker2 tempbulletx, tempbullety, BLOCK12X,BLOCK12Y,TOBEDRAWNABLOCK+12
+									 
+					checkbulllimit22:cmp word ptr [di],0 ;screen limit
+									jge beginnextcollisionchecking22
+									mov word ptr[si],0
+									mov word ptr[di],0
+									
+                beginnextcollisionchecking22:add si,2
+										   add di,2
+										   pop cx
+										   dec cx  
+										   cmp cx,0
+				                   jnz temploopBulletcollision22
+								   jz BulletCollisionreturn22
+				
+temploopBulletcollision22: jmp loopBulletcollision22
+
+BulletCollisionreturn22: ret
+
+BulletCollision2_L2 endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 MainMenu proc far
 
 			  mov ax, 4f02h
@@ -2580,6 +3087,8 @@ dispgameframe:
               int 10h
 
               mov ah,9     ;displaying the main page(frame)
+			  mov al,0
+			  mov bx,0
               mov dx,offset frameMes1
               int 21h
 
@@ -2876,10 +3385,10 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 		cmp BooleanFreeze1,0 ;checking if  shooter1 is freezed
         jz StartAdj2	
         dec BooleanFreeze1
-		jmp exitadjust1	
+		jmp exitadjust1	  
 		
 				;CHECKING WHETHER USER HAS PRESSED A KEY
-	StartAdj2:
+	StartAdj2:				
 	CMP PlayerNumber,2
 	jnz checkforplayer1
 	
@@ -2905,7 +3414,9 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	UP_PRESSED:
 		CMP SHOOTER2Y,30
 		JL exitadjust1
+		call CLEARSHOOTER2
 		SUB SHOOTER2Y,Shooter2Speed  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
+		call DRAWSHOOTER2
 		MOV BX,0
 		JMP exitadjust1
 	
@@ -2913,7 +3424,9 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 						;SINCE DOWN HAS BEEN PRESSED, WILL INCREMENT THE Y COORDINATE 
 		CMP SHOOTER2Y,460
 		JGE exitadjust1
+		call CLEARSHOOTER2
 		ADD SHOOTER2Y,Shooter2Speed
+		call DRAWSHOOTER2
 		MOV BX,0
 		JMP exitadjust1
 		
@@ -2961,16 +3474,20 @@ ADJUST_POSITION1 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	UP_PRESSED2:
 		CMP SHOOTER1Y,30
 		JLE exitadjust2
+		CALL CLEARSHOOTER1
 		SUB SHOOTER1Y,Shooter1Speed  ;SINCE UP HAS BEEN PRESSED, WILL DECREMENT THE Y COORDINATE FOR ALL STARTING POINTS
 		MOV BX,0
+		CALL DRAWSHOOTER1 
 		JMP exitadjust2
 	
 	DOWN_PRESSED2:
 						;SINCE DOWN HAS BEEN PRESSED, WILL INCREMENT THE Y COORDINATE 
 		CMP SHOOTER1Y,470
 		JGE exitadjust2
+		CALL CLEARSHOOTER1
 		ADD SHOOTER1Y,Shooter1Speed
 		MOV BX,0
+		CALL DRAWSHOOTER1 
 		JMP exitadjust2
 		
 		
@@ -3266,9 +3783,11 @@ AGAIN:  In al , dx 			;Read Line Status CHECK IF EMPTY
 		jnz scrollcont
 		mov sendcursorx,0
 		inc sendcursory
+		jmp enterjmphere1
 		
 scrollcont:
 		inc sendcursorx   ;incrementing after printing 
+enterjmphere1:
 		cmp sendcursorx,79	;mov to the next line if line finished 
 		jnz contsend
 		mov sendcursorx,0 
@@ -3324,9 +3843,10 @@ RECIEVE PROC
 		jnz scrollcont2
 		mov recievecursorx,0
 		inc recievecursory
-		
+		jmp enterjmphere2
 scrollcont2:
 		inc recievecursorx   ;incrementing after printing 
+enterjmphere2:
 		cmp recievecursorx,79	;mov to the next line if line finished 
 		jnz contrec
 		mov recievecursorx,0 
@@ -3537,6 +4057,158 @@ mov GAMEMODE,3
 ret
 Mainmenuserialcom endp
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Synchronize proc far
+
+cmp PlayerNumber,1
+jnz Iamplayer2
+
+;send a character
+		MOV VALUESENT,SyncCHAR   ;Character to check if we begin frame 
+		mov dx , 3FDH		
+AGAINSENDSYNCP1:    In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSENDSYNCP1                               ;Not empty
+	
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		mov VALUESENT,0
+
+;loop untill the character is recieved
+RecieveSyncloop1:
+RECIEVEMACRO
+cmp VALUERECIEVED,SyncCHAR
+jz exitsyncp1
+jmp RecieveSyncloop1
+
+exitsyncp1: mov VALUERECIEVED,0
+			ret
+
+Iamplayer2:
+;loop until a character is recieved 
+RecieveSyncloop2:
+RECIEVEMACRO
+cmp VALUERECIEVED,SyncCHAR
+jz exitsyncp2
+jmp RecieveSyncloop2
+
+exitsyncp2:mov VALUERECIEVED,0
+;send it back
+		MOV VALUESENT,SyncCHAR   ;Character to check if we begin frame 
+		mov dx , 3FDH		
+AGAINSENDSYNCP2:    In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSENDSYNCP2                               ;Not empty
+	
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+mov VALUESENT,0
+ret
+Synchronize endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Chooselevel proc far
+
+cmp PlayerNumber,1
+jz continuelevel
+jmp Waitforlevel
+
+continuelevel:
+	mov ah,2     ;moving the cursor to the center of the screen
+    mov dx,1332h
+    mov bx,0
+    int 10h
+    mov ah,9     ;displaying 
+    mov al,0
+    mov bx,0
+    mov dx,offset Lvl1mess
+    int 21h
+  
+    mov ah,2     ;moving the cursor to the center of the screen
+    mov dx,1832h
+    mov bx,0
+    int 10h
+    mov ah,9     ;displaying 
+    mov al,0
+    mov bx,0
+    mov dx,offset Lvl2mess
+    int 21h
+  
+not1or2:
+    mov ah,0
+	int 16h
+	cmp Ah,2
+	jnz startsendlevel
+	cmp ah,3
+	jnz startsendlevel
+	jmp not1or2
+	
+	
+startsendlevel:	MOV VALUESENT,AH
+	
+	mov dx , 3FDH		
+AGAINSENDlevel:   
+			  In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSENDlevel                           ;Not empty
+	
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+
+;since scan code is 1 more than actual numbers
+mov ah,VALUESENT
+dec ah
+mov Level,ah
+
+    mov ah,2     ;moving the cursor to the center of the screen
+    mov dx,1332h
+    mov bx,0
+    int 10h
+    mov ah,9     ;displaying 
+    mov al,0
+    mov bx,0
+    mov dx,offset clearlevel
+    int 21h
+  
+    mov ah,2     ;moving the cursor to the center of the screen
+    mov dx,1832h
+    mov bx,0
+    int 10h
+    mov ah,9     ;displaying 
+    mov al,0
+    mov bx,0
+    mov dx,offset clearlevel
+    int 21h
+
+ret
+
+Waitforlevel:
+
+mov dx , 3FDH		; Line Status Register
+		
+		in al , dx 
+  		test al , 1
+  		JZ Waitforlevel                                    ;Not Ready
+		
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUERECIEVED , al
+
+
+;since scan code is 1 more than actual numbers
+mov ah,VALUERECIEVED
+dec ah
+mov Level,ah
+
+exitlevelselect:
+ret
+Chooselevel endp
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Main proc far
@@ -3550,8 +4222,8 @@ Main proc far
 	Call GameName
 	CALL INITIALIZESERIAL
    
-rightusername:Call Usernamescreenchecker  ;user name screen 
-				call Usernamescreenchecker2
+rightusername:  Call Usernamescreenchecker  ;user name screen 
+				;call Usernamescreenchecker2
 				
 	
 Mainmenujump:	mov GAMEMODE,0
@@ -3565,20 +4237,17 @@ Mainmenujump:	mov GAMEMODE,0
 				jz playingmode
 				cmp GAMEMODE,3
 				jz tempexitmain
-; WaitingForKeyPressed:mov ah,0
-                     ; int 16h
-                     ; cmp al,1bh
-                     ; jz tempexitmain
-                     ; cmp ah,3Bh
-                     ; jz chattingmode  
-                     ; cmp ah,3Ch
-                     ; jz playingmode
-                     ; jmp WaitingForKeyPressed
-					 
+ 
       
-chattingmode:call chattingMenu ;/////////////if f1 is pressed  ;;TODO;; FIX P DISSAPPEAR AFTER YOU RETURN FROM CHAT 
-															   ;;TODO;; FIX SPACING IN CHAT MODE AND RESET CURSORS
-             
+chattingmode:MOV sendcursorx   ,0
+             MOV sendcursory   ,0
+             MOV recievecursorx,0
+             MOV recievecursory,13
+ 
+			 call chattingMenu ;/////////////if f1 is pressed  
+														   
+             mov VALUESENT,0
+			 mov VALUERECIEVED,0
              jz Mainmenujump 
 
 
@@ -3598,10 +4267,15 @@ playingmode:  ;/////////////if f2 is pressed
 			  
 			  CALL DRAWRIGHTWALLS ;draw blocks
 			  CALL DRAWLEFTWALLS  
-				
+			  call DRAWSHOOTER1
+			  call DRAWSHOOTER2
+			  ;Chooselevel
+			  call Chooselevel
+			  ;CALL Synchronize
 		maingameloop:
 				;; TODO ;; MAYBE WE ADD SOMETHING HERE TO MAKE THE GAME SYNCHRONUS?
 				;;PLAYER 1 sends a special character maybe?
+				;CALL Synchronize
 				
 				mov cx, 0H    ;  delay
 				mov dx, 8235h
@@ -3614,26 +4288,47 @@ playingmode:  ;/////////////if f2 is pressed
 				RECIEVEMACRO   ;;SERIAL SEND AND RECIEVE
 				SENDMACRO
 				
-				call CLEARSHOOTER1  ;Shooter Functions
-				call CLEARSHOOTER2
+				;Shooter Functions
 				call ADJUST_POSITION1
 				call ADJUST_POSITION2				
-				call DRAWSHOOTER1
-				call DRAWSHOOTER2
+				
 				
 				call AddBullet1 ;Bullet functions
 				call BulletClear1
 				call BulletAnimation1
+				cmp Level,1
+				jnz notlevel11
                 call BulletCollision1
+				notlevel11:
+				cmp Level,2
+				jnz notlevel21
+				call BulletCollision1_L2
+				notlevel21:
 				call drawbullet1
 				
 				call AddBullet2 ;Bullet functions
 				call BulletClear2
 				call BulletAnimation2
+				cmp Level,1
+				jnz notlevel12
                 call BulletCollision2
+				notlevel12:
+				cmp Level,2
+				jnz notlevel22
+                call BulletCollision2_L2
+				notlevel22:
 				call drawbullet2
 				
+				
+				
+				cmp Level,1
+				jnz notlevel13
 				call BlinkMiddleandInvert ;inverts the middle blocks every second as well as draw them 
+				notlevel13:
+				cmp Level,2
+				jnz notlevel23
+				call BlinkMiddleandInvert2
+				notlevel23:
 				DRAWGLUES                 ;draws the glue blocker
 				
 				call StatusBar
@@ -3662,6 +4357,8 @@ playingmode:  ;/////////////if f2 is pressed
 			
 			mov VALUESENT,0
 			mov VALUERECIEVED,0
+			
+			;call Synchronize
 					 
      cont:  jmp maingameloop              
 	
