@@ -2,8 +2,6 @@
 
 ;;;;;;;MACROS;;;;;;;;;;;
 
-;;TODO IDEAS FOR SYNC MAYBE SEND PLAYER POSITIONS AND SCORE AND TIME????
-
 resetmainmenu MACRO
 
 mov chatmoderecieveboolean , 0  
@@ -28,6 +26,7 @@ LOCAL RECIEVECHK
   		mov dx , 03F8H
   		in al , dx 
   		mov VALUERECIEVED , al
+		
 
 RECIEVECHK:
 
@@ -57,6 +56,50 @@ AGAINSEND:    In al , dx 			;Read Line Status CHECK IF EMPTY
 		int 21h 
 
 nothingsent:
+ENDM 
+
+SMALLSENDMACRO MACRO
+LOCAL AGAINSEND11
+;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH		; Line Status Register
+		
+AGAINSEND11:    In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSEND11                             ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+ENDM
+SENDMACRO2 MACRO 
+LOCAL AGAINSEND2,nothingsent2,somethingsent
+
+	mov ah,1
+	int 16h
+	jz nothingsent2
+	MOV VALUESENT,AH
+	
+;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH		; Line Status Register
+		
+AGAINSEND2:    In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSEND2                              ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+		mov ah,7  ;;;;clear buffer;;;
+		int 21h 
+		jmp somethingsent
+
+nothingsent2:
+call sendandrecievetime
+somethingsent:
 ENDM 
 
 
@@ -820,12 +863,13 @@ Usernamemessage db 'Please Enter your Name Player 1 :','$'
 Usernamemessage2 db 'Please Enter your Name Player 2 :','$'
 Usernamecontinuemessage db 'Press Enter to Continue','$'
 UserNameDATA db 20				;Must stay in this order
-UserNameDataNumber db ?            ;Must stay in this order
+UserNameDataNumber db 0            ;Must stay in this order
 UserNameDatastring db 20 dup('$')    ;Must stay in this order
 
 UserNameDATA2 db 20				;Must stay in this order
-UserNameDataNumber2 db ?            ;Must stay in this order
+UserNameDataNumber2 db 0            ;Must stay in this order
 UserNameDatastring2 db 20 dup('$')
+Usernamebarring db ' : $'
 
 notbarmess db 128 dup('_'),10,'$' 
 notbarmess2 db 128 dup('-'),10,'$' 
@@ -869,9 +913,12 @@ VALUERECIEVED DB ?
 sendcursorx db 0
 sendcursory db 0
 recievecursorx db 0
+ingamecursor db 0
 recievecursory db 13
-
-
+SendString db 80 dup(' '),'$'
+SendStringIndex dw 0
+SendString2 db 128 dup(' '),'$'
+SendStringIndex2 dw 0
 
 .code
 
@@ -895,6 +942,32 @@ ClearALLscreenouter:
 				jnz ClearALLscreenouter
 ret				
 ClearALLScreen endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+clearserial proc far
+
+beginclearserial:
+;Check that Data is Ready
+		mov dx , 3FDH		; Line Status Register
+		
+		in al , dx 
+  		test al , 1
+  		JZ clearserialend                                    ;Not Ready
+		
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUERECIEVED , al
+jmp beginclearserial		
+
+clearserialend:
+mov VALUERECIEVED,0
+mov VALUESENT,0
+ret
+clearserial endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;PROCEDURE TO DRAW RIGHT WALLS
@@ -1261,49 +1334,46 @@ DRAWMIDDLEBLOCKS2 ENDP
 
 BlinkMiddleandInvert proc far
 
-	mov ax,2c00h 
-	int 21h   
-	cmp booleantime4,0
-	jnz hastimecomemiddle
-	mov MiddleTimeValue,dh
-	mov booleantime4,1
-	
-	hastimecomemiddle:	
-		cmp dh,MiddleTimeValue
-		jz middleinvertjmp
+		mov ah,0
+		mov al,Timervalue ;if odd and even for better consistency
+		mov dl,2
+		DIV dl
+		cmp ah,1
+		jnz timeisevenmiddle
+		mov Middleblockboolean,0
+		mov Middleblockbooleaninverted,1
+		jmp middleinvertjmp
 		
-		mov MiddleTimeValue,dh  ;invert the blocks
-		mov al,Middleblockboolean
-		mov ah,Middleblockbooleaninverted
-		
-		mov Middleblockboolean,ah
-		mov Middleblockbooleaninverted,al
+timeisevenmiddle:		
+		cmp ah,0
+		jnz middleinvertjmp
+		mov Middleblockboolean,1
+		mov Middleblockbooleaninverted,0
 		
 middleinvertjmp: call DRAWMIDDLEBLOCKS
+
 
 ret
 BlinkMiddleandInvert endp
 
 
 BlinkMiddleandInvert2 proc far ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;done by aya ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	mov ax,2c00h 
-	int 21h   
-	cmp booleantime4,0
-	jnz hastimecomemiddle2
-	mov MiddleTimeValue,dh
-	mov booleantime4,1
 	
-	hastimecomemiddle2:	
-		cmp dh,MiddleTimeValue
-		jz middleinvertjmp2
+		mov ah,0
+		mov al,Timervalue ;if odd and even for better consistency
+		mov dl,2
+		DIV dl
+		cmp ah,1
+		jnz timeisevenmiddle2
+		mov Middleblockboolean,0
+		mov Middleblockbooleaninverted,1
+		jmp middleinvertjmp2
 		
-		mov MiddleTimeValue,dh  ;invert the blocks
-		mov al,Middleblockboolean
-		mov ah,Middleblockbooleaninverted
-		
-		mov Middleblockboolean,ah
-		mov Middleblockbooleaninverted,al
+timeisevenmiddle2:		
+		cmp ah,0
+		jnz middleinvertjmp2
+		mov Middleblockboolean,1
+		mov Middleblockbooleaninverted,0	
 		
 middleinvertjmp2: call DRAWMIDDLEBLOCKS2
 
@@ -1959,7 +2029,9 @@ CLEARSHOOTER2 endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 TimerPrint proc far
-		  
+		
+cmp PlayerNumber,1  ;Player 2 only recieves the time
+jnz PrintingTime		
 		mov ax,2c00h   ;checking the time the game started
 		int 21h   
 		cmp booleantime3,0
@@ -2351,6 +2423,23 @@ ExitIntro:	mov ax, 4f02h
 GameName endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+clearbuffer proc far
+
+startclearbuffer:
+mov ah,1
+int 16h
+jz clearbufferreturn
+pushf
+mov ah,7 
+int 21h
+popf
+jnz startclearbuffer 
+
+clearbufferreturn:ret
+clearbuffer endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ScoreScreen proc far
 
@@ -2516,14 +2605,14 @@ AddBullet2 proc far
 
 	cmp PlayerNumber,2
     jnz addforplayer22
-	cmp VALUESENT,2Dh     ;X key
+	cmp VALUESENT,39h     ;X key
     jnz addbulletreturn2   
 	jmp ADDBULLETJUMP2
 	
 	addforplayer22:
 	cmp PlayerNumber,1  
 	jnz addbulletreturn2
-	cmp VALUERECIEVED,2Dh     ;X key
+	cmp VALUERECIEVED,39h     ;X key
 	jnz addbulletreturn2
 	
 	ADDBULLETJUMP2:
@@ -3378,7 +3467,6 @@ Bulletanimatedreturn2: ret
 BulletAnimation2 endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TODO ;; CHECK WHY THE PLAYER 1 is repeated for some wierd reason 
 ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S 
 						 ;POSITION TO BE UPDATED IN THE SUBSEQUENT FRAME
 						 
@@ -3392,20 +3480,20 @@ ADJUST_POSITION2 PROC     ;PROCEDURE TO ADJUST COORDINATES OF THE SHOOTER'S
 	CMP PlayerNumber,2
 	jnz checkforplayer1
 	
-	CMP VALUESENT,1EH    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	CMP VALUESENT,48H    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP) 1E
 	JE UP_PRESSED
 	
-	CMP VALUESENT,2CH    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	CMP VALUESENT,50H    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN) 2C
 	JE DOWN_PRESSED
 	
 	checkforplayer1:
 	CMP PlayerNumber,1
 	jnz notplayer1
 	
-	CMP VALUERECIEVED,1EH    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
+	CMP VALUERECIEVED,48H    ;CHECKING IF THE PRESSED KEY IS LETTER A (GO UP)
 	JE UP_PRESSED
 	
-	CMP VALUERECIEVED,2CH    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
+	CMP VALUERECIEVED,50H    ;CHECKING IF THE PRESSED KEY IS THE LETTER Z (GO DOWN)
 	JE DOWN_PRESSED
 	
 	notplayer1:
@@ -3741,7 +3829,7 @@ mov al,10000000b		;Set Divisor Latch Access Bit
 out dx,al				;Out it
 
 mov dx,3f8h			    ;SET LSB BAUD RATE DIVISOR LATCH
-mov al,1h			
+mov al,0Ch			
 out dx,al
 
 mov dx,3f9h             ;SET MSB BAUD RATE DIVISOR LATCH
@@ -3779,6 +3867,18 @@ AGAIN:  In al , dx 			;Read Line Status CHECK IF EMPTY
 		int 10h 
 		
 		;;;;;;;special characters
+		cmp VALUESENT,8
+		jnz enterchecksend
+		cmp sendcursorx,0
+		jz contsend
+		dec sendcursorx
+		MOV AH,2
+		MOV DL,' '
+		INT 21H
+		jmp SENDRET
+		
+		
+enterchecksend:
 		cmp VALUESENT, 13
 		jnz scrollcont
 		mov sendcursorx,0
@@ -3795,13 +3895,13 @@ enterjmphere1:
 		
 		
 contsend:MOV AH,2
-		MOV DL,VALUESENT
-		INT 21H
+		 MOV DL,VALUESENT
+		 INT 21H
 		
 		cmp sendcursory,11
 		jnz SENDRET					;check if at the end of the 12 lines then scroll
 		mov ah,6       ; function 6
-		mov al,3        ; scroll by 3 line    
+		mov al,1        ; scroll by 3 line    
 		mov bh,1fH       ; normal video attribute         
 		mov ch,0       ; upper left Y
 		mov cl,0        ; upper left X
@@ -3810,8 +3910,15 @@ contsend:MOV AH,2
 		int 10h		
 		mov sendcursory,8
 		
+		
 
-SENDRET:RET
+SENDRET:
+		mov ah,2 
+		mov dh,sendcursory
+		mov dl,sendcursorx
+		mov bx,0
+		int 10h 
+RET
 SEND ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3823,8 +3930,9 @@ RECIEVE PROC
 		
 		in al , dx 
   		test al , 1
-  		JZ CHK                                    ;Not Ready
-		
+  		JnZ tempnoCHK                                    ;Not Ready
+		jmp CHK
+tempnoCHK:	
  ;If Ready read the VALUE in Receive data register
   		mov dx , 03F8H
   		in al , dx 
@@ -3839,6 +3947,17 @@ RECIEVE PROC
 		
 		
 		;;;;;;;special characters
+		cmp VALUERECIEVED,8
+		jnz entercheckrec
+		cmp recievecursorx,0
+		jz contrec
+		dec recievecursorx
+		MOV AH,2
+		MOV DL,' '
+		INT 21H
+		jmp CHK
+		
+entercheckrec:		
 		cmp VALUERECIEVED, 13
 		jnz scrollcont2
 		mov recievecursorx,0
@@ -3856,23 +3975,60 @@ enterjmphere2:
 contrec:MOV AH,2
 		MOV DL,VALUERECIEVED
 		INT 21H
+		mov ah,2 
+		mov dh,recievecursory
+		mov dl,recievecursorx
+		mov bx,0
+		int 10h 
 		
-		cmp recievecursory,24
+		cmp recievecursory,25
 		jnz CHK					;check if at the end of the 12 lines then scroll
 	
 		mov ah,6       ; function 6
-		mov al,3        ; scroll by 3 line    
+		mov al,1        ; scroll by 3 line    
 		mov bh,4fH       ; normal video attribute         
-		mov ch,13       ; upper left Y
+		mov ch,14       ; upper left Y
 		mov cl,0        ; upper left X
 		mov dh,24     ; lower right Y
 		mov dl,79      ; lower right X 
 		int 10h
-		mov recievecursory,21
+		mov recievecursory,24
 		
 
 CHK:RET
 RECIEVE ENDP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+RECIEVEINGAME proc far
+
+;Check that Data is Ready
+		mov dx , 3FDH		; Line Status Register
+		
+		in al , dx 
+  		test al , 1
+  		JnZ tempnoCHK2                                    ;Not Ready
+		jmp CHK2
+tempnoCHK2:	
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUERECIEVED , al
+		
+		mov ah,2 
+		mov dh,2Ch
+		mov dl,ingamecursor
+		mov bx,0
+		int 10h 
+		
+		MOV AH,2
+		MOV DL,VALUERECIEVED
+		INT 21H
+		inc ingamecursor
+		cmp ingamecursor,127
+		jnz CHK2
+		mov ingamecursor,0
+
+CHK2:RET
+RECIEVEINGAME endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 chattingMenu proc far
@@ -3910,9 +4066,36 @@ chattingMenu proc far
    mov dl,79      ; lower right X 
    int 10h
 	 
+	mov ah,2     ;moving the cursor to Print invitation
+    mov dx,0000h
+    mov bx,0
+    int 10h
+    mov ah,9     ;print invitation
+    mov dx,offset UserNameDATAString
+    int 21h 
+	
+	mov ah,9
+	mov dx,offset Usernamebarring
+	int 21h
+	
+	
+    mov ah,2     ;moving the cursor to Print invitation
+    mov dx,1300h
+    mov bx,0
+    int 10h
+    mov ah,9     ;print invitation
+    mov dx,offset UserNameDATAString2
+    int 21h 	
+	
+	mov ah,9
+	mov dx,offset Usernamebarring
+	int 21h
+	
    
    MOV VALUESENT,0
    MOV VALUERECIEVED,0
+   
+   call clearbuffer
    
    LOOPSERIAL:
 		 MOV AH,1
@@ -3921,7 +4104,7 @@ chattingMenu proc far
 		 MOV VALUESENT,AL
 		 MOV AH,7
 		 INT 21H
-		 CALL SEND
+		 SENDMACRO
 		 
 jumphereSERIAL:CALL RECIEVE
 		 
@@ -3935,6 +4118,251 @@ jumphereSERIAL:CALL RECIEVE
 
 EXIT:ret
 chattingMenu endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+sendallstring proc far
+
+mov cx,79
+lea bx,SendString
+
+lpsendallstring:
+mov ah,byte ptr [bx]
+mov VALUESENT,ah
+mov dx , 3FDH		; Line Status Register
+		
+AGAINSENDstring:   
+			  In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSENDstring                              ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+inc bx
+loop lpsendallstring
+
+mov cx,80
+lea bx,SendString
+lpsendallstring2:
+mov byte ptr [bx],' '
+inc bx
+loop lpsendallstring2
+
+mov SendStringIndex,0
+ret
+sendallstring endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+sendallstring2 proc far
+
+mov cx,127
+lea bx,SendString2
+
+lpsendallstring3:
+mov ah,byte ptr [bx]
+mov VALUESENT,ah
+mov dx , 3FDH		; Line Status Register
+		
+AGAINSENDstring2:   
+			  In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSENDstring2                             ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,VALUESENT
+  		out dx , al
+		
+inc bx
+loop lpsendallstring3
+
+mov cx,128
+lea bx,SendString2
+lpsendallstring4:
+mov byte ptr [bx],' '
+inc bx
+loop lpsendallstring4
+
+mov SendStringIndex2,0
+ret
+sendallstring2 endp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+chattingMenu2 proc far
+
+   mov ah,0
+   mov al,3
+   int 10h
+
+   mov ah,6       ; function 6
+   mov al,0        ; scroll by 1 line    
+   mov bh,1fH       ; normal video attribute         
+   mov ch,0       ; upper left Y
+   mov cl,0        ; upper left X
+   mov dh,11     ; lower right Y
+   mov dl,79      ; lower right X 
+   int 10h
+	
+
+   mov ah,6       ; function 6
+   mov al,0        ; scroll by 1 line    
+   mov bh,7H       ; normal video attribute         
+   mov ch,12       ; upper left Y
+   mov cl,0        ; upper left X
+   mov dh,12     ; lower right Y
+   mov dl,79      ; lower right X 
+   int 10h
+	
+
+   mov ah,6       ; function 6
+   mov al,0        ; scroll by 1 line    
+   mov bh,4fH       ; normal video attribute         
+   mov ch,13       ; upper left Y
+   mov cl,0        ; upper left X
+   mov dh,24     ; lower right Y
+   mov dl,79      ; lower right X 
+   int 10h
+	 
+	mov ah,2     ;moving the cursor to Print invitation
+    mov dx,0000h
+    mov bx,0
+    int 10h
+    mov ah,9     ;print invitation
+    mov dx,offset UserNameDATAString
+    int 21h 
+	
+	mov ah,2     ;moving the cursor to Print invitation
+    mov dx,0000h
+	add dl,UserNameDataNumber
+    mov bx,0
+    int 10h
+	mov ah,9
+	mov dx,offset Usernamebarring
+	int 21h
+	
+	
+    mov ah,2     ;moving the cursor to Print invitation
+    mov dx,0D00h
+    mov bx,0
+    int 10h
+    mov ah,9     ;print invitation
+    mov dx,offset UserNameDATAString2
+    int 21h 	
+	
+	mov ah,2     ;moving the cursor to Print invitation
+    mov dx,0D00h
+	add dl,UserNameDataNumber2
+    mov bx,0
+    int 10h
+	mov ah,9
+	mov dx,offset Usernamebarring
+	int 21h
+	 
+   
+   MOV VALUESENT,0
+   MOV VALUERECIEVED,0
+   
+   call clearbuffer
+   
+    LOOPSERIAL2:
+		 MOV AH,1
+		 INT 16H
+		 jz tempSERIAL2
+		 cmp al,';'
+		 jnz nextchecknot
+		 mov ah,7
+		 int 21h
+		 jmp LOOPSERIAL2
+
+tempSERIAL2: jmp jumphereSERIAL2
+	
+nextchecknot:
+ 		 cmp al,27
+		 jnz nextchecknot2
+		 MOV VALUESENT,AL
+		 call SEND
+		 mov ah,7 
+		 int 21h
+		 jmp jumphereSERIAL2
+
+nextchecknot2:
+		 cmp al,8
+		 jnz entercheck
+		 MOV AH,7
+		 INT 21H
+		 cmp SendStringIndex,0
+		 jz nobck1
+		 dec SendStringIndex
+		 lea bx,SendString
+		 add bx,SendStringIndex
+		 mov byte ptr [bx],' '
+		 
+nobck1:   jmp printingsendstring
+		 
+		 
+		 ;;;;
+		 ;when enter is pressed new line is made and we inc cursor y
+entercheck:
+		 cmp al,13
+		 jnz puttostring
+		 call sendallstring
+		 mov ah,7
+		 int 21h
+		 inc sendcursory
+		 cmp sendcursory,12
+		 jnz printingsendcon
+		 mov ah,6       ; function 6
+		 mov al,1        ; scroll by 1 line    
+		 mov bh,1fH       ; normal video attribute
+		 mov ch,1       ; upper left Y
+		 mov cl,0        ; upper left X
+		 mov dh,11     ; lower right Y
+		 mov dl,79      ; lower right X 
+		 int 10h
+		 mov sendcursory,11
+		 
+printingsendcon:
+		 jmp printingsendstring
+		 
+puttostring:		 
+		 MOV AH,7
+		 INT 21H
+		 cmp al,';'
+		 jz LOOPSERIAL2
+		 
+		 lea bx,SendString
+		 add bx,SendStringIndex
+		 mov [bx],al
+		 cmp SendStringIndex, 79
+		 jz printingsendstring
+		 inc SendStringIndex
+		 
+		 ;;;;;print the string in the line of the cursor
+printingsendstring:	
+		
+		mov ah,2 
+		mov dh,sendcursory
+		mov dl,0
+		mov bx,0
+		int 10h 
+		 
+		mov ah,9
+		lea dx,SendString
+		int 21h
+		 
+jumphereSERIAL2:CALL RECIEVE
+		 
+		 CMP VALUESENT,27
+		 JZ EXIT2
+		 
+		 CMP VALUERECIEVED,27
+		 JZ EXIT2
+		
+   JMP LOOPSERIAL2
+
+EXIT2:
+ret
+chattingMenu2 endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Mainmenuserialcom proc far
@@ -4208,6 +4636,159 @@ mov Level,ah
 exitlevelselect:
 ret
 Chooselevel endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+sendandrecievetime proc far
+
+cmp PlayerNumber,1
+jnz endtimesendandrecieve 
+
+mov bl,Timervalue ;to not be mistaken for another character
+add bl,170
+	
+;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH		; Line Status Register
+		
+AGAINSENDtime:    In al , dx 			;Read Line Status CHECK IF EMPTY
+			  test al , 00100000b
+			  JZ AGAINSENDtime                              ;Not empty
+	
+;If empty put the VALUE in Transmit data register
+  		mov dx , 3F8H		; Transmit data register
+  		mov al,bl
+  		out dx , al
+
+
+
+endtimesendandrecieve:
+ret
+sendandrecievetime endp 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ingamechat proc far
+
+
+;Pause for chat
+cmp VALUESENT,3FH  ;F5
+jz startgamechat
+CMP VALUERECIEVED,3FH
+jz startgamechat
+jmp ingamechatret
+
+startgamechat:
+    mov ah,2     ;moving the cursor to Print invitation
+    mov dx,2800h
+    mov bx,0
+    int 10h
+    mov ah,9     ;print invitation
+    mov dx,offset UserNameDATAString
+    int 21h 
+	
+	mov ah,2     ;moving the cursor to Print invitation
+    mov dx,2800h
+	add dl,UserNameDataNumber
+    mov bx,0
+    int 10h
+	mov ah,9
+	mov dx,offset Usernamebarring
+	int 21h
+	
+	
+    mov ah,2     ;moving the cursor to Print invitation
+    mov dx,2B00h
+    mov bx,0
+    int 10h
+    mov ah,9     ;print invitation
+    mov dx,offset UserNameDATAString2
+    int 21h 	
+	
+	mov ah,2     ;moving the cursor to Print invitation
+    mov dx,2B00h
+	add dl,UserNameDataNumber2
+    mov bx,0
+    int 10h
+	mov ah,9
+	mov dx,offset Usernamebarring
+	int 21h
+	 
+   
+   MOV VALUESENT,0
+   MOV VALUERECIEVED,0
+
+
+ingamechatloop:
+		 MOV AH,1
+		 INT 16H
+		 jz gamecompletecheck
+		 
+
+checkifcontgame:
+ 		 cmp al,27  ;ESCAPE Pressed
+		 jnz bckspacecheck
+		 MOV VALUESENT,AL
+		 SMALLSENDMACRO
+		 mov ah,7 
+		 int 21h
+		 jmp gamecompletecheck
+		 
+		 
+bckspacecheck:
+		 cmp al,8
+		 jnz checkifenterpress
+		 MOV AH,7
+		 INT 21H
+		 cmp SendStringIndex2,0
+		 jz nobck2
+		 dec SendStringIndex2
+		 lea bx,SendString2
+		 add bx,SendStringIndex2
+		 mov byte ptr [bx],' '
+		 
+nobck2:   jmp printingsendstring2
+		 
+checkifenterpress:
+		 cmp al,13
+		 jnz puttostring2
+		 call sendallstring2 
+		 mov ah,7
+		 int 21h
+		 jmp gamecompletecheck
+
+
+puttostring2:		 
+		 MOV AH,7
+		 INT 21H
+		 lea bx,SendString2
+		 add bx,SendStringIndex2
+		 mov [bx],al
+		 cmp SendStringIndex2, 127
+		 jz printingsendstring2
+		 inc SendStringIndex2
+		 
+		 ;;;;;print the string in the line of the cursor
+printingsendstring2:	
+		
+		mov ah,2 
+		mov dh,29h
+		mov dl,0
+		mov bx,0
+		int 10h 
+		 
+		mov ah,9
+		lea dx,SendString2
+		int 21h
+
+
+gamecompletecheck: call RECIEVEINGAME ;TODO edit for in game
+
+cmp VALUESENT,27 ;ESC
+jz ingamechatret
+CMP VALUERECIEVED,27
+jz ingamechatret
+jmp ingamechatloop
+
+ingamechatret:
+ret
+ingamechat endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -4223,10 +4804,10 @@ Main proc far
 	CALL INITIALIZESERIAL
    
 rightusername:  Call Usernamescreenchecker  ;user name screen 
-				;call Usernamescreenchecker2
 				
 	
-Mainmenujump:	mov GAMEMODE,0
+Mainmenujump:	
+				mov GAMEMODE,0
 				CALL MainMenu
 				CALL Mainmenuserialcom ; send and recieve between players
 				resetmainmenu		   ;reset booleans
@@ -4240,12 +4821,10 @@ Mainmenujump:	mov GAMEMODE,0
  
       
 chattingmode:MOV sendcursorx   ,0
-             MOV sendcursory   ,0
+             MOV sendcursory   ,1
              MOV recievecursorx,0
-             MOV recievecursory,13
- 
-			 call chattingMenu ;/////////////if f1 is pressed  
-														   
+             MOV recievecursory,14
+			 call chattingMenu2 ;/////////////if f1 is pressed  										   
              mov VALUESENT,0
 			 mov VALUERECIEVED,0
              jz Mainmenujump 
@@ -4271,11 +4850,7 @@ playingmode:  ;/////////////if f2 is pressed
 			  call DRAWSHOOTER2
 			  ;Chooselevel
 			  call Chooselevel
-			  ;CALL Synchronize
 		maingameloop:
-				;; TODO ;; MAYBE WE ADD SOMETHING HERE TO MAKE THE GAME SYNCHRONUS?
-				;;PLAYER 1 sends a special character maybe?
-				;CALL Synchronize
 				
 				mov cx, 0H    ;  delay
 				mov dx, 8235h
@@ -4285,8 +4860,12 @@ playingmode:  ;/////////////if f2 is pressed
 				push si
                 push di
 				
+				
 				RECIEVEMACRO   ;;SERIAL SEND AND RECIEVE
-				SENDMACRO
+				SENDMACRO2
+				
+				mov ingamecursor,0
+				call ingamechat ;;;Not finished
 				
 				;Shooter Functions
 				call ADJUST_POSITION1
@@ -4320,6 +4899,18 @@ playingmode:  ;/////////////if f2 is pressed
 				call drawbullet2
 				
 				
+				;send and recieve time
+				cmp PlayerNumber,2
+				jnz completestatusbar
+				mov bl,VALUERECIEVED
+				cmp bl,169
+				jb completestatusbar
+				sub bl,170
+				mov Timervalue,bl
+				
+completestatusbar:				
+				call StatusBar
+				
 				
 				cmp Level,1
 				jnz notlevel13
@@ -4331,7 +4922,6 @@ playingmode:  ;/////////////if f2 is pressed
 				notlevel23:
 				DRAWGLUES                 ;draws the glue blocker
 				
-				call StatusBar
 				
 				
 				mov al,Timervalue
@@ -4358,13 +4948,26 @@ playingmode:  ;/////////////if f2 is pressed
 			mov VALUESENT,0
 			mov VALUERECIEVED,0
 			
-			;call Synchronize
-					 
+			
+			;clearbuffer
+			call clearbuffer
+				
      cont:  jmp maingameloop              
 	
-	tempmainmenujmp:jmp Mainmenujump
+	tempmainmenujmp:call clearbuffer
+					cmp PlayerNumber,1
+					jnz player2cont
+					Mov VALUESENT,1
+					SMALLSENDMACRO
+					
+					player2cont:
+					mov VALUESENT,0
+					mov VALUERECIEVED,0
+					jmp Mainmenujump
 	
-	ScoreScreenjmp: call ScoreScreen
+	ScoreScreenjmp: call sendandrecievetime
+					call ScoreScreen
+					call clearbuffer
 					jmp Mainmenujump
 	
 	Exitmain: 
@@ -4377,3 +4980,4 @@ playingmode:  ;/////////////if f2 is pressed
 Main endp
 
 end main 
+;;TODO ADD SOUND WHEN FINISH
