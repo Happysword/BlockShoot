@@ -577,7 +577,7 @@ DELETEABLOCK MACRO BLOCKX, BLOCKY
 
 ;
 ;
-
+;EXTRN Sound:FAR TODO
 .Model Large
 .Stack 64
 .Data
@@ -859,7 +859,7 @@ booleanisbigger2 db 0
 frameMes2 db 'Press F2 To Start A New Game',10,'$'
 frameMes1 db ' Press F1 To Enter Chat Mode',10,13,'$'
 frameMes3 db 'Press ESC to Exit The Game',10,'$'
-Usernamemessage db 'Please Enter your Name Player 1 :','$'
+Usernamemessage db 'Please Enter your Name :','$'
 Usernamemessage2 db 'Please Enter your Name Player 2 :','$'
 Usernamecontinuemessage db 'Press Enter to Continue','$'
 UserNameDATA db 20				;Must stay in this order
@@ -870,6 +870,7 @@ UserNameDATA2 db 20				;Must stay in this order
 UserNameDataNumber2 db 0            ;Must stay in this order
 UserNameDatastring2 db 20 dup('$')
 Usernamebarring db ' : $'
+tempuserstring db 20 dup('$')
 
 notbarmess db 128 dup('_'),10,'$' 
 notbarmess2 db 128 dup('-'),10,'$' 
@@ -2499,6 +2500,7 @@ printingpressspace:	mov ah,2   ;move cursor
 	lea dx,IntroMessage
 	int 21h
 	
+	;call Sound
 	
 	;wait for key to exit
 WaitforSpace2:	
@@ -3131,6 +3133,62 @@ BulletCollisionreturn22: ret
 
 BulletCollision2_L2 endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SendRECUSERNAMES proc far
+
+lea bx,UserNameDataNumber
+mov cl,0
+
+senduserloop:
+
+mov ch,[bx]
+mov VALUESENT,ch
+SMALLSENDMACRO
+inc cl
+inc bx
+cmp cl,15
+jnz senduserloop
+
+
+lea bx,UserNameDataNumber2
+mov cx,15
+recieveuserloop:
+
+
+RECIEVECHK2:
+;Check that Data is Ready
+		mov dx , 3FDH		; Line Status Register
+		
+		in al , dx 
+  		test al , 1
+  		JZ RECIEVECHK2                                    ;Not Ready
+		
+ ;If Ready read the VALUE in Receive data register
+  		mov dx , 03F8H
+  		in al , dx 
+  		mov VALUERECIEVED , al
+		mov ah,VALUERECIEVED
+		mov [bx],ah
+		inc bx
+
+loop recieveuserloop
+
+lea bx,UserNameDataNumber
+mov cl,0
+
+senduserloop2:
+
+mov ch,[bx]
+mov VALUESENT,ch
+SMALLSENDMACRO
+inc cl
+inc bx
+cmp cl,15
+jnz senduserloop2
+
+
+ret
+SendRECUSERNAMES endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 MainMenu proc far
@@ -3214,16 +3272,13 @@ notificationBar:mov ah,2     ;moving the cursor to the below the frame messages 
 				mov bx,0
                 int 10h
 
+
                 mov ah,9     ;print Username
                 mov dx,offset UserNameDatastring
                 int 21h
 				
-
 ret
 MainMenu endp
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 drawbullet1 proc far 
@@ -4071,7 +4126,7 @@ chattingMenu proc far
     mov bx,0
     int 10h
     mov ah,9     ;print invitation
-    mov dx,offset UserNameDATAString
+    mov dx,offset UserNameDataString
     int 21h 
 	
 	mov ah,9
@@ -4228,7 +4283,7 @@ chattingMenu2 proc far
     mov bx,0
     int 10h
     mov ah,9     ;print invitation
-    mov dx,offset UserNameDATAString
+    mov dx,offset UserNameDataString
     int 21h 
 	
 	mov ah,2     ;moving the cursor to Print invitation
@@ -4246,7 +4301,7 @@ chattingMenu2 proc far
     mov bx,0
     int 10h
     mov ah,9     ;print invitation
-    mov dx,offset UserNameDATAString2
+    mov dx,offset UserNameDataString2
     int 21h 	
 	
 	mov ah,2     ;moving the cursor to Print invitation
@@ -4680,7 +4735,7 @@ startgamechat:
     mov bx,0
     int 10h
     mov ah,9     ;print invitation
-    mov dx,offset UserNameDATAString
+    mov dx,offset UserNameDataString
     int 21h 
 	
 	mov ah,2     ;moving the cursor to Print invitation
@@ -4698,7 +4753,7 @@ startgamechat:
     mov bx,0
     int 10h
     mov ah,9     ;print invitation
-    mov dx,offset UserNameDATAString2
+    mov dx,offset UserNameDataString2
     int 21h 	
 	
 	mov ah,2     ;moving the cursor to Print invitation
@@ -4791,7 +4846,62 @@ ret
 ingamechat endp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+checksecondusername proc far
 
+lea bx,UserNameDataString2 
+lea si,tempuserstring  
+mov UserNameDataNumber2,0
+
+mov cx,20
+stringloop1: 
+
+cmp byte ptr [bx],91
+jz acharacter
+cmp byte ptr  [bx],92
+jz acharacter
+cmp byte ptr [bx],93
+jz acharacter
+cmp byte ptr [bx],94
+jz acharacter
+cmp byte ptr [bx],95
+jz acharacter
+cmp byte ptr [bx],96
+jz acharacter
+
+cmp byte ptr [bx],65
+jl acharacter
+cmp byte ptr [bx],122
+jg acharacter  
+            
+
+mov ah,[bx]
+mov [si],ah
+inc si   
+inc UserNameDataNumber2
+
+acharacter:
+inc bx
+
+loop stringloop1
+
+   
+mov ch,0    
+mov cl,UserNameDataNumber2    
+
+mov ax,ds
+mov es,ax
+
+lea si,tempuserstring
+lea di,UserNameDataString2
+
+rep  movsb
+       
+mov al,'$'
+STOSB
+
+ret
+checksecondusername endp
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 Main proc far
 	mov ax,@data
 	mov ds,ax ; copy data segment
@@ -4804,7 +4914,8 @@ Main proc far
 	CALL INITIALIZESERIAL
    
 rightusername:  Call Usernamescreenchecker  ;user name screen 
-				
+				call SendRECUSERNAMES
+				call checksecondusername
 	
 Mainmenujump:	
 				mov GAMEMODE,0
